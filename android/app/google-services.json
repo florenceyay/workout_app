@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1049301786744",
+    "project_id": "workout-app-d466d",
+    "storage_bucket": "workout-app-d466d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1049301786744:android:85d2d6d798d22452788d8d",
+        "android_client_info": {
+          "package_name": "com.florenceyay.workout_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1049301786744-svhfkivvft7mmdgj0ccrb6t9chng507v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZaw6C9GPrZXKe8jnRo1TX0-_2bf3zZvc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1049301786744-svhfkivvft7mmdgj0ccrb6t9chng507v.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
