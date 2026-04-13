@@ -8,6 +8,7 @@ import '../../shared/models/exercise.dart';
 import 'exercise_list_screen.dart';
 import 'subcategory_screen.dart';
 import 'logging_screen.dart';
+import 'custom_workout_creation_screen.dart';
 
 class CategoryScreen extends ConsumerStatefulWidget {
   const CategoryScreen({super.key});
@@ -98,26 +99,101 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
                 _StreakCard(days: _weekStreak),
                 const SizedBox(height: 20),
 
-                if (_loaded && _recentLogs.isNotEmpty) ...[
-                  Text('Quick Log', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.textSecondary)),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 44,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _recentLogs.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, i) {
-                        final log = _recentLogs[i];
-                        return _QuickLogChip(
-                          label: log.exerciseName,
-                          onTap: () => _showLastSessionSheet(log),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                ],
+                Builder(builder: (context) {
+                  // Latest log per exerciseId (allLogs is already in scope
+                  // from the StreamBuilder, sorted newest-first by the
+                  // service).
+                  final latestByExercise = <String, WorkoutLog>{};
+                  for (final log in allLogs) {
+                    latestByExercise.putIfAbsent(log.exerciseId, () => log);
+                  }
+
+                  // Pinned exercises come first, in pin order. Missing logs
+                  // are synthesised so unseen exercises can still appear.
+                  final pinnedIds = ref.watch(pinnedQuickLogProvider);
+                  final customs = ref.watch(customExercisesProvider);
+                  final exerciseById = <String, Exercise>{
+                    for (final ex in kExerciseList) ex.id: ex,
+                    for (final ex in customs) ex.id: ex,
+                  };
+
+                  final pinnedEntries = <_QuickLogEntry>[];
+                  for (final id in pinnedIds) {
+                    final log = latestByExercise[id];
+                    if (log != null) {
+                      pinnedEntries.add(_QuickLogEntry(
+                        exerciseId: id,
+                        exerciseName: log.exerciseName,
+                        category: log.category,
+                        lastLog: log,
+                        pinned: true,
+                      ));
+                    } else {
+                      final ex = exerciseById[id];
+                      if (ex == null) continue;
+                      pinnedEntries.add(_QuickLogEntry(
+                        exerciseId: id,
+                        exerciseName: ex.name,
+                        category: ex.category,
+                        lastLog: null,
+                        pinned: true,
+                      ));
+                    }
+                  }
+
+                  // Recent logs that aren't already pinned.
+                  final pinnedSet = pinnedIds.toSet();
+                  final recentEntries = <_QuickLogEntry>[];
+                  for (final log in _recentLogs) {
+                    if (pinnedSet.contains(log.exerciseId)) continue;
+                    recentEntries.add(_QuickLogEntry(
+                      exerciseId: log.exerciseId,
+                      exerciseName: log.exerciseName,
+                      category: log.category,
+                      lastLog: log,
+                      pinned: false,
+                    ));
+                  }
+
+                  final entries = [...pinnedEntries, ...recentEntries];
+                  if (!_loaded || entries.isEmpty) return const SizedBox.shrink();
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Quick Log',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(color: AppColors.textSecondary)),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 44,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: entries.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          itemBuilder: (context, i) {
+                            final e = entries[i];
+                            return _QuickLogChip(
+                              label: e.exerciseName,
+                              pinned: e.pinned,
+                              onTap: () {
+                                if (e.lastLog != null) {
+                                  _showLastSessionSheet(e.lastLog!);
+                                } else {
+                                  _goToLogging(
+                                      e.exerciseId, e.exerciseName, e.category);
+                                }
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  );
+                }),
 
                 Text('Category', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.textSecondary)),
                 const SizedBox(height: 10),
@@ -140,16 +216,25 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
                       tint: ref.watch(themeColorProvider),
                       loggedDates: categoryDates[key] ?? {},
                       onTap: () {
-                        final hasSubcategories =
-                            (kSubcategoriesByCategory[key]?.length ?? 0) > 1;
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => hasSubcategories
-                                ? SubcategoryScreen(category: key)
-                                : ExerciseListScreen(initialCategory: key),
-                          ),
-                        ).then((_) => _loadData());
+                        if (key == 'custom') {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const CustomWorkoutCreationScreen(),
+                            ),
+                          ).then((_) => _loadData());
+                        } else {
+                          final hasSubcategories =
+                              (kSubcategoriesByCategory[key]?.length ?? 0) > 1;
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => hasSubcategories
+                                  ? SubcategoryScreen(category: key)
+                                  : ExerciseListScreen(initialCategory: key),
+                            ),
+                          ).then((_) => _loadData());
+                        }
                       },
                     );
                   },
@@ -375,8 +460,10 @@ class _MiniCalendar extends StatelessWidget {
     final firstDay = currentMonth;
     final lastDay = DateTime(today.year, today.month + 1, 0);
 
-    // Calculate starting position (0 = Monday, 6 = Sunday)
-    final startWeekday = firstDay.weekday == 7 ? 0 : firstDay.weekday - 1;
+    // Calculate starting position (0 = Sunday, 6 = Saturday). Dart's
+    // DateTime.weekday returns 1 (Mon) – 7 (Sun), so Sunday maps to 0 and
+    // Monday maps to 1, etc.
+    final startWeekday = firstDay.weekday == 7 ? 0 : firstDay.weekday;
     final totalDays = lastDay.day;
     final totalCells = ((startWeekday + totalDays + 6) ~/ 7) * 7;
 
@@ -493,8 +580,13 @@ class _StreakCard extends StatelessWidget {
 
 class _QuickLogChip extends StatelessWidget {
   final String label;
+  final bool pinned;
   final VoidCallback onTap;
-  const _QuickLogChip({required this.label, required this.onTap});
+  const _QuickLogChip({
+    required this.label,
+    required this.onTap,
+    this.pinned = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -507,11 +599,40 @@ class _QuickLogChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(22),
           border: Border.all(color: AppColors.accent.withValues(alpha: 0.4)),
         ),
-        child: Text(label, style: TextStyle(
-            color: AppColors.accent, fontWeight: FontWeight.w500, fontSize: 14)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (pinned) ...[
+              Icon(Icons.push_pin, size: 12, color: AppColors.accent),
+              const SizedBox(width: 4),
+            ],
+            Text(label,
+                style: TextStyle(
+                    color: AppColors.accent,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14)),
+          ],
+        ),
       ),
     );
   }
+}
+
+// Lightweight row model for the Quick Log bar — pinned entries may not
+// have a log yet, so lastLog is nullable.
+class _QuickLogEntry {
+  final String exerciseId;
+  final String exerciseName;
+  final String category;
+  final WorkoutLog? lastLog;
+  final bool pinned;
+  const _QuickLogEntry({
+    required this.exerciseId,
+    required this.exerciseName,
+    required this.category,
+    required this.lastLog,
+    required this.pinned,
+  });
 }
 
 // ──────────────────────────────────────────────

@@ -40,6 +40,41 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.exerciseName, style: const TextStyle(fontWeight: FontWeight.bold)),
+        actions: [
+          Builder(builder: (context) {
+            final pinned = ref
+                .watch(pinnedQuickCheckProvider)
+                .contains(widget.exerciseId);
+            return IconButton(
+              tooltip:
+                  pinned ? 'Unpin from Quick Check' : 'Pin to Quick Check',
+              icon: Icon(
+                pinned ? Icons.push_pin : Icons.push_pin_outlined,
+                color: pinned ? AppColors.accent : AppColors.textSecondary,
+              ),
+              onPressed: () async {
+                await ref
+                    .read(pinnedQuickCheckProvider.notifier)
+                    .toggle(widget.exerciseId);
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    duration: const Duration(seconds: 1),
+                    backgroundColor: AppColors.surface,
+                    content: Text(
+                      ref
+                              .read(pinnedQuickCheckProvider)
+                              .contains(widget.exerciseId)
+                          ? 'Pinned to Quick Check'
+                          : 'Unpinned from Quick Check',
+                      style: const TextStyle(color: AppColors.textPrimary),
+                    ),
+                  ),
+                );
+              },
+            );
+          }),
+        ],
       ),
       body: StreamBuilder<List<WorkoutLog>>(
         stream: stream,
@@ -50,7 +85,11 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
           if (snap.hasError) {
             return Center(child: Text('Error: ${snap.error}', style: const TextStyle(color: AppColors.error)));
           }
-          final logs = snap.data ?? [];
+          // Merge multiple logs of this exercise on the same day into a
+          // single combined session. Sort ascending for chart ordering.
+          final raw = snap.data ?? [];
+          final logs = WorkoutLog.mergeSameDayLogs(raw)
+            ..sort((a, b) => a.date.compareTo(b.date));
 
           if (logs.isEmpty) {
             return const Center(

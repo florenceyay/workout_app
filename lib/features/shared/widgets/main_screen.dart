@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../workout/screens/category_screen.dart';
+import '../../overview/screens/overview_screen.dart';
 import '../../history/screens/history_screen.dart';
 import '../theme/app_theme.dart';
 
@@ -13,7 +14,11 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _index = 0;
 
-  static const _screens = [CategoryScreen(), HistoryScreen()];
+  static const _screens = [
+    CategoryScreen(),
+    OverviewScreen(),
+    HistoryScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -27,8 +32,18 @@ class _MainScreenState extends State<MainScreen> {
           currentIndex: _index,
           onTap: (i) => setState(() => _index = i),
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.add_circle_outline), activeIcon: Icon(Icons.add_circle), label: 'Log'),
-            BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), activeIcon: Icon(Icons.bar_chart), label: 'History'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.add_circle_outline),
+                activeIcon: Icon(Icons.add_circle),
+                label: 'Log'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.pie_chart_outline),
+                activeIcon: Icon(Icons.pie_chart),
+                label: 'Overview'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.bar_chart_outlined),
+                activeIcon: Icon(Icons.bar_chart),
+                label: 'History'),
           ],
         ),
       ),

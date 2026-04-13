@@ -14,6 +14,7 @@ class LoggingScreen extends ConsumerStatefulWidget {
   final String exerciseName;
   final String category;
   final String note;
+  final String? trackingType;
 
   const LoggingScreen({
     super.key,
@@ -21,6 +22,7 @@ class LoggingScreen extends ConsumerStatefulWidget {
     required this.exerciseName,
     required this.category,
     this.note = '',
+    this.trackingType,
   });
 
   @override
@@ -29,6 +31,7 @@ class LoggingScreen extends ConsumerStatefulWidget {
 
 class _LoggingScreenState extends ConsumerState<LoggingScreen> {
   WorkoutLog? _lastLog;
+  List<WorkoutLog> _recentSessions = const [];
   bool _loaded = false;
   bool _saving = false;
   bool _isPR = false;
@@ -100,14 +103,16 @@ class _LoggingScreenState extends ConsumerState<LoggingScreen> {
       return;
     }
 
-    final last = await ref
+    final sessions = await ref
         .read(workoutServiceProvider)
-        .getLastLog(uid, widget.exerciseId)
-        .catchError((_) => null);
+        .getRecentSessions(uid, widget.exerciseId, limit: 3)
+        .catchError((_) => <WorkoutLog>[]);
+    final last = sessions.isNotEmpty ? sessions.first : null;
 
     if (mounted) {
       setState(() {
         _lastLog = last;
+        _recentSessions = sessions;
         _loaded = true;
         if (_sets.isEmpty) {
           final defaultWeight = last?.sets.isNotEmpty == true ? last!.sets.last.weight : 0.0;
@@ -133,7 +138,12 @@ class _LoggingScreenState extends ConsumerState<LoggingScreen> {
     setState(() => _sets.removeAt(index));
   }
 
-  bool get _isCardio => widget.category == 'cardio';
+  bool get _isCardio {
+    if (widget.trackingType != null) {
+      return widget.trackingType == 'cardio';
+    }
+    return widget.category == 'cardio';
+  }
 
   Future<void> _save() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -143,7 +153,7 @@ class _LoggingScreenState extends ConsumerState<LoggingScreen> {
     final List<WorkoutSet> validSets;
     if (_isCardio) {
       validSets = _sets
-          .where((s) => s.distance > 0 && s.durationMinutes > 0)
+          .where((s) => s.distance > 0 || s.durationMinutes > 0)
           .map((s) => WorkoutSet(
                 weight: 0,
                 reps: 0,
@@ -161,7 +171,7 @@ class _LoggingScreenState extends ConsumerState<LoggingScreen> {
     if (validSets.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(_isCardio
-            ? 'Add at least one entry with distance and time.'
+            ? 'Add at least one entry with distance or time.'
             : 'Add at least one set with weight and reps.')),
       );
       return;
@@ -242,21 +252,55 @@ class _LoggingScreenState extends ConsumerState<LoggingScreen> {
         widget.category == 'bodyweight' || widget.category == 'calisthenics';
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            Row(
-              children: [
-                Text(widget.exerciseName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                if (_isPR) ...[
-                  const SizedBox(width: 8),
-                  const _PRBadge(),
-                ],
-              ],
+            Flexible(
+              child: Text(
+                widget.exerciseName,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
+            if (_isPR) ...[
+              const SizedBox(width: 8),
+              const _PRBadge(),
+            ],
           ],
         ),
         actions: [
+          // Pin to Quick Log bar
+          Builder(builder: (context) {
+            final pinned =
+                ref.watch(pinnedQuickLogProvider).contains(widget.exerciseId);
+            return IconButton(
+              tooltip: pinned ? 'Unpin from Quick Log' : 'Pin to Quick Log',
+              icon: Icon(
+                pinned ? Icons.push_pin : Icons.push_pin_outlined,
+                color: pinned ? AppColors.accent : AppColors.textSecondary,
+              ),
+              onPressed: () async {
+                await ref
+                    .read(pinnedQuickLogProvider.notifier)
+                    .toggle(widget.exerciseId);
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    duration: const Duration(seconds: 1),
+                    backgroundColor: AppColors.surface,
+                    content: Text(
+                      ref
+                              .read(pinnedQuickLogProvider)
+                              .contains(widget.exerciseId)
+                          ? 'Pinned to Quick Log'
+                          : 'Unpinned from Quick Log',
+                      style: const TextStyle(color: AppColors.textPrimary),
+                    ),
+                  ),
+                );
+              },
+            );
+          }),
           if (widget.category != 'bodyweight' &&
               widget.category != 'calisthenics' &&
               !_isCardio)
@@ -385,11 +429,12 @@ class _LoggingScreenState extends ConsumerState<LoggingScreen> {
                   ),
                 ),
 
-                // Last session summary bar
-                if (_lastLog != null && _lastLog!.sets.isNotEmpty)
+                // Last few sessions summary bar
+                if (_recentSessions.isNotEmpty)
                   _LastSessionBar(
-                    log: _lastLog!,
-                    isBodyweight: widget.category == 'bodyweight' || widget.category == 'calisthenics',
+                    sessions: _recentSessions,
+                    isBodyweight: widget.category == 'bodyweight' ||
+                        widget.category == 'calisthenics',
                     isCardio: _isCardio,
                     weightUnit: unit,
                     distanceUnit: ref.watch(distanceUnitProvider),
@@ -756,7 +801,7 @@ class _NumberField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final field = TextField(
+    final textField = TextField(
       controller: controller,
       onChanged: onChanged,
       keyboardType: decimal
@@ -765,7 +810,7 @@ class _NumberField extends StatelessWidget {
       inputFormatters: [
         FilteringTextInputFormatter.allow(decimal ? RegExp(r'^\d*\.?\d*') : RegExp(r'\d+')),
       ],
-      textAlign: TextAlign.center,
+      textAlign: TextAlign.right,
       style: const TextStyle(
         color: AppColors.textPrimary,
         fontSize: 20,
@@ -774,15 +819,32 @@ class _NumberField extends StatelessWidget {
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 16),
-        suffixText: suffix,
-        suffixStyle: const TextStyle(
-          color: AppColors.textSecondary,
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-        ),
+        isDense: true,
         border: InputBorder.none,
         contentPadding: const EdgeInsets.symmetric(vertical: 8),
       ),
+    );
+
+    // Always-visible unit label next to the field so users can see
+    // "kg"/"lb"/"reps"/"min" at a glance without focusing the input.
+    final field = Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        Flexible(child: textField),
+        if (suffix != null && suffix!.isNotEmpty) ...[
+          const SizedBox(width: 4),
+          Text(
+            suffix!,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ],
     );
 
     if (!_hasWheel) return field;
@@ -1019,95 +1081,133 @@ class _SectionLabel extends StatelessWidget {
 // ──────────────────────────────────────────────
 
 class _LastSessionBar extends StatelessWidget {
-  final WorkoutLog log;
+  final List<WorkoutLog> sessions;
   final bool isBodyweight;
   final bool isCardio;
   final String weightUnit;
   final String distanceUnit;
   const _LastSessionBar({
-    required this.log,
+    required this.sessions,
     required this.isBodyweight,
     this.isCardio = false,
     this.weightUnit = 'kg',
     this.distanceUnit = 'km',
   });
 
-  @override
-  Widget build(BuildContext context) {
+  double _toDisplay(double kg) => weightUnit == 'lb' ? kg * 2.20462 : kg;
+  String _fmtW(double kg) {
+    final v = _toDisplay(kg);
+    return v % 1 == 0 ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+  }
+
+  String _summarise(WorkoutLog log) {
     final sets = log.sets;
-    String summary;
+    if (sets.isEmpty) return '—';
+
     if (isCardio) {
       final totalDistKm = sets.fold<double>(0, (sum, s) => sum + s.distance);
-      final totalMin = sets.fold<double>(0, (sum, s) => sum + s.durationMinutes);
+      final totalMin =
+          sets.fold<double>(0, (sum, s) => sum + s.durationMinutes);
       final dist = distanceUnit == 'mi' ? totalDistKm * 0.621371 : totalDistKm;
-      final distStr = dist % 1 == 0 ? dist.toStringAsFixed(0) : dist.toStringAsFixed(2);
-      final minStr = totalMin % 1 == 0 ? totalMin.toStringAsFixed(0) : totalMin.toStringAsFixed(1);
-      summary = '$distStr $distanceUnit in $minStr min';
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          border: Border(top: BorderSide(color: AppColors.divider)),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.history, color: AppColors.textSecondary, size: 16),
-            const SizedBox(width: 8),
-            const Text('Last session: ',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 14, fontWeight: FontWeight.w500)),
-            Expanded(
-              child: Text(summary,
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-                  overflow: TextOverflow.ellipsis),
-            ),
-          ],
-        ),
-      );
+      final distStr =
+          dist % 1 == 0 ? dist.toStringAsFixed(0) : dist.toStringAsFixed(2);
+      final minStr =
+          totalMin % 1 == 0 ? totalMin.toStringAsFixed(0) : totalMin.toStringAsFixed(1);
+      return '$distStr $distanceUnit in $minStr min';
     }
 
     final topSet = sets.reduce((a, b) => a.weight > b.weight ? a : b);
     final allSameWeight = sets.every((s) => s.weight == topSet.weight);
     final allSameReps = sets.every((s) => s.reps == topSet.reps);
 
-    double toDisplay(double kg) => weightUnit == 'lb' ? kg * 2.20462 : kg;
-    String fmtW(double kg) {
-      final v = toDisplay(kg);
-      return v % 1 == 0 ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
-    }
-
     if (isBodyweight) {
       if (allSameReps) {
-        summary = '${sets.length} sets of ${topSet.reps} reps';
-      } else {
-        summary = '${sets.asMap().entries.map((e) => '${e.value.reps}').join(' / ')} reps';
+        return '${sets.length} sets of ${topSet.reps} reps';
       }
-    } else {
-      final w = fmtW(topSet.weight);
-      if (allSameWeight && allSameReps) {
-        summary = '${sets.length} sets of $w $weightUnit × ${topSet.reps} reps';
-      } else if (allSameWeight) {
-        summary = '$w $weightUnit — ${sets.asMap().entries.map((e) => '${e.value.reps}').join(' / ')} reps';
-      } else {
-        summary = sets.map((s) => '${fmtW(s.weight)}×${s.reps}').join('  ');
-      }
+      return '${sets.map((s) => s.reps).join(' / ')} reps';
     }
 
+    final w = _fmtW(topSet.weight);
+    if (allSameWeight && allSameReps) {
+      return '${sets.length} sets of $w $weightUnit × ${topSet.reps} reps';
+    }
+    if (allSameWeight) {
+      return '$w $weightUnit — ${sets.map((s) => s.reps).join(' / ')} reps';
+    }
+    return sets.map((s) => '${_fmtW(s.weight)}×${s.reps}').join('  ');
+  }
+
+  String _relativeDate(DateTime d) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(d.year, d.month, d.day);
+    final diff = today.difference(day).inDays;
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
+    if (diff < 7) return '${diff}d ago';
+    const months = [
+      'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'
+    ];
+    return '${months[d.month - 1]} ${d.day}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Label rotates between "Last session" / "Previous" / "Earlier".
+    const labels = ['Last session', 'Previous', 'Earlier'];
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(top: BorderSide(color: AppColors.divider)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.history, color: AppColors.textSecondary, size: 16),
-          const SizedBox(width: 8),
-          Text('Last session: ', style: const TextStyle(color: AppColors.textSecondary, fontSize: 14, fontWeight: FontWeight.w500)),
-          Expanded(
-            child: Text(summary,
-                style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-                overflow: TextOverflow.ellipsis),
-          ),
+          for (var i = 0; i < sessions.length && i < 3; i++) ...[
+            if (i > 0) const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Icon(
+                  i == 0 ? Icons.history : Icons.circle,
+                  color: AppColors.textSecondary,
+                  size: i == 0 ? 16 : 5,
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 92,
+                  child: Text(
+                    '${labels[i]}:',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    _summarise(sessions[i]),
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _relativeDate(sessions[i].date),
+                  style: const TextStyle(
+                    color: AppColors.textGhost,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

@@ -5,6 +5,7 @@ class Exercise {
   final String subcategory;
   final String note;
   final bool isCustom;
+  final String? trackingType; // 'strength', 'cardio', or null
 
   const Exercise({
     required this.id,
@@ -13,6 +14,7 @@ class Exercise {
     required this.subcategory,
     this.note = '',
     this.isCustom = false,
+    this.trackingType,
   });
 
   factory Exercise.fromMap(Map<String, dynamic> map, String id) {
@@ -23,6 +25,7 @@ class Exercise {
       subcategory: map['subcategory'] as String? ?? '',
       note: map['note'] as String? ?? '',
       isCustom: map['isCustom'] as bool? ?? false,
+      trackingType: map['trackingType'] as String?,
     );
   }
 
@@ -33,6 +36,7 @@ class Exercise {
         'subcategory': subcategory,
         if (note.isNotEmpty) 'note': note,
         if (isCustom) 'isCustom': true,
+        if (trackingType != null) 'trackingType': trackingType,
       };
 }
 
@@ -102,12 +106,18 @@ const List<Map<String, String>> kDefaultExercises = [
   // Abs - Lower
   {'name': 'Leg Raises', 'category': 'abs', 'subcategory': 'lower abs'},
   {'name': 'Hanging Knee Raises', 'category': 'abs', 'subcategory': 'lower abs'},
+  // Abs - Obliques
+  {'name': 'Side Plank', 'category': 'abs', 'subcategory': 'obliques'},
+  {'name': 'Russian Twists', 'category': 'abs', 'subcategory': 'obliques'},
+  {'name': 'Woodchoppers', 'category': 'abs', 'subcategory': 'obliques'},
+  {'name': 'Oblique Crunches', 'category': 'abs', 'subcategory': 'obliques'},
+  {'name': 'Hanging Side Knee Raises', 'category': 'abs', 'subcategory': 'obliques'},
   // Abs - Core
   {'name': 'Plank', 'category': 'abs', 'subcategory': 'core'},
   {'name': 'Ab Wheel', 'category': 'abs', 'subcategory': 'core'},
-  {'name': 'Russian Twists', 'category': 'abs', 'subcategory': 'core'},
 
   // Cardio - Machines
+  {'name': 'Treadmill', 'category': 'cardio', 'subcategory': 'machines'},
   {'name': 'Rowing', 'category': 'cardio', 'subcategory': 'machines'},
   {'name': 'Stair Climber', 'category': 'cardio', 'subcategory': 'machines'},
   {'name': 'Elliptical', 'category': 'cardio', 'subcategory': 'machines'},
@@ -154,7 +164,7 @@ const Map<String, List<String>> kSubcategoriesByCategory = {
   'back': ['lats', 'upper back', 'lower back'],
   'chest': ['upper chest', 'mid chest', 'lower chest'],
   'legs': ['quads', 'hamstrings', 'glutes', 'calves'],
-  'abs': ['upper abs', 'lower abs', 'core'],
+  'abs': ['upper abs', 'lower abs', 'obliques', 'core'],
   'cardio': ['machines', 'outdoor', 'other'],
   'calisthenics': ['push', 'pull', 'legs', 'core'],
   'custom': ['custom'],
@@ -176,6 +186,7 @@ const Map<String, String> kSubcategoryLabels = {
   'calves': 'Calves',
   'upper abs': 'Upper Abs',
   'lower abs': 'Lower Abs',
+  'obliques': 'Obliques',
   'core': 'Core',
   'machines': 'Machines',
   'outdoor': 'Outdoor',

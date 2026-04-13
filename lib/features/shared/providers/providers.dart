@@ -98,6 +98,7 @@ class CustomExercisesNotifier extends StateNotifier<List<Exercise>> {
     required String category,
     required String subcategory,
     String note = '',
+    String? trackingType,
   }) async {
     final id = 'custom_${DateTime.now().millisecondsSinceEpoch}';
     final ex = Exercise(
@@ -107,6 +108,7 @@ class CustomExercisesNotifier extends StateNotifier<List<Exercise>> {
       subcategory: subcategory,
       note: note,
       isCustom: true,
+      trackingType: trackingType,
     );
     state = [...state, ex];
     await _save();
@@ -122,4 +124,64 @@ class CustomExercisesNotifier extends StateNotifier<List<Exercise>> {
 final customExercisesProvider =
     StateNotifierProvider<CustomExercisesNotifier, List<Exercise>>((ref) {
   return CustomExercisesNotifier(ref.watch(sharedPreferencesProvider));
+});
+
+// ──────────────────────────────────────────────
+// Pinned exercise ids for Quick Log / Quick Check bars
+// ──────────────────────────────────────────────
+//
+// Stored as a JSON-encoded list of exercise ids so order is preserved
+// (pin order = order they appear in the bar).
+
+class _PinnedIdsNotifier extends StateNotifier<List<String>> {
+  final SharedPreferences prefs;
+  final String key;
+  _PinnedIdsNotifier(this.prefs, this.key) : super(_load(prefs, key));
+
+  static List<String> _load(SharedPreferences prefs, String key) {
+    final raw = prefs.getString(key);
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final list = jsonDecode(raw) as List<dynamic>;
+      return list.map((e) => e as String).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> _save() async {
+    await prefs.setString(key, jsonEncode(state));
+  }
+
+  bool isPinned(String id) => state.contains(id);
+
+  Future<void> toggle(String id) async {
+    if (state.contains(id)) {
+      state = state.where((e) => e != id).toList();
+    } else {
+      state = [...state, id];
+    }
+    await _save();
+  }
+
+  Future<void> unpin(String id) async {
+    if (!state.contains(id)) return;
+    state = state.where((e) => e != id).toList();
+    await _save();
+  }
+}
+
+const _kPinnedQuickLogKey = 'pinned_quick_log';
+const _kPinnedQuickCheckKey = 'pinned_quick_check';
+
+final pinnedQuickLogProvider =
+    StateNotifierProvider<_PinnedIdsNotifier, List<String>>((ref) {
+  return _PinnedIdsNotifier(
+      ref.watch(sharedPreferencesProvider), _kPinnedQuickLogKey);
+});
+
+final pinnedQuickCheckProvider =
+    StateNotifierProvider<_PinnedIdsNotifier, List<String>>((ref) {
+  return _PinnedIdsNotifier(
+      ref.watch(sharedPreferencesProvider), _kPinnedQuickCheckKey);
 });

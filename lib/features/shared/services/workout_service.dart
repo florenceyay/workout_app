@@ -42,6 +42,22 @@ class WorkoutService {
     return logs.first;
   }
 
+  // Get the most recent [limit] merged sessions for an exercise. Multiple
+  // logs on the same day are combined into a single session (sets
+  // concatenated), so this returns one entry per distinct day.
+  Future<List<WorkoutLog>> getRecentSessions(String uid, String exerciseId,
+      {int limit = 3}) async {
+    final snap = await _logsRef(uid)
+        .where('exerciseId', isEqualTo: exerciseId)
+        .get();
+    if (snap.docs.isEmpty) return const [];
+    final logs =
+        snap.docs.map((d) => WorkoutLog.fromMap(d.data(), d.id)).toList();
+    final merged = WorkoutLog.mergeSameDayLogs(logs)
+      ..sort((a, b) => b.date.compareTo(a.date));
+    return merged.take(limit).toList();
+  }
+
   // Check if a new log is a PR (higher max weight than all previous)
   Future<bool> isPersonalRecord(String uid, String exerciseId, double maxWeight) async {
     final snap = await _logsRef(uid)
