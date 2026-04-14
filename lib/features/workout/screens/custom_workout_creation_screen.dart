@@ -209,12 +209,12 @@ class _CustomWorkoutCreationScreenState
               hintStyle:
                   const TextStyle(color: AppColors.textGhost, fontSize: 13),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.divider),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: AppColors.accent),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.accent, width: 1.5),
               ),
               filled: true,
               fillColor: AppColors.surface,
@@ -234,12 +234,12 @@ class _CustomWorkoutCreationScreenState
               hintStyle:
                   const TextStyle(color: AppColors.textGhost, fontSize: 13),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.divider),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: AppColors.accent),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.accent, width: 1.5),
               ),
               filled: true,
               fillColor: AppColors.surface,
@@ -348,10 +348,9 @@ class _TrackingOption extends StatelessWidget {
               ? AppColors.accent.withValues(alpha: 0.1)
               : AppColors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected ? AppColors.accent : AppColors.divider,
-            width: selected ? 1.5 : 1,
-          ),
+          border: selected
+              ? Border.all(color: AppColors.accent, width: 1.5)
+              : null,
         ),
         child: Row(
           children: [
@@ -435,8 +434,7 @@ class _ExistingCustomTile extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.divider),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           children: [

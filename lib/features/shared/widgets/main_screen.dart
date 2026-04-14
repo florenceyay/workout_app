@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../workout/screens/category_screen.dart';
 import '../../overview/screens/overview_screen.dart';
@@ -24,26 +25,106 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(index: _index, children: _screens),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: AppColors.divider, width: 1)),
+      extendBody: true,
+      bottomNavigationBar: ClipRRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface.withValues(alpha: 0.88),
+              border: const Border(
+                top: BorderSide(color: AppColors.divider, width: 0.5),
+              ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _NavItem(
+                      icon: Icons.add_circle_outline,
+                      activeIcon: Icons.add_circle,
+                      label: 'Log',
+                      isActive: _index == 0,
+                      onTap: () => setState(() => _index = 0),
+                    ),
+                    _NavItem(
+                      icon: Icons.pie_chart_outline,
+                      activeIcon: Icons.pie_chart,
+                      label: 'Overview',
+                      isActive: _index == 1,
+                      onTap: () => setState(() => _index = 1),
+                    ),
+                    _NavItem(
+                      icon: Icons.bar_chart_outlined,
+                      activeIcon: Icons.bar_chart,
+                      label: 'History',
+                      isActive: _index == 2,
+                      onTap: () => setState(() => _index = 2),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
-        child: BottomNavigationBar(
-          currentIndex: _index,
-          onTap: (i) => setState(() => _index = i),
-          items: const [
-            BottomNavigationBarItem(
-                icon: Icon(Icons.add_circle_outline),
-                activeIcon: Icon(Icons.add_circle),
-                label: 'Log'),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.pie_chart_outline),
-                activeIcon: Icon(Icons.pie_chart),
-                label: 'Overview'),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.bar_chart_outlined),
-                activeIcon: Icon(Icons.bar_chart),
-                label: 'History'),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _NavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: SizedBox(
+        width: 72,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? AppColors.accent.withValues(alpha: 0.15)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                isActive ? activeIcon : icon,
+                color: isActive ? AppColors.accent : AppColors.textGhost,
+                size: 22,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                color: isActive ? AppColors.accent : AppColors.textGhost,
+                fontSize: 11,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+              ),
+            ),
           ],
         ),
       ),

@@ -202,9 +202,9 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
-                    mainAxisSpacing: 10,
+                    mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
-                    childAspectRatio: 1.6,
+                    childAspectRatio: 1.3,
                   ),
                   itemCount: _categories.length,
                   itemBuilder: (context, i) {
@@ -371,11 +371,21 @@ class _CategoryTile extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.divider),
+          color: AppColors.surfaceLight,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.05),
+            width: 0.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
         child: Stack(
           children: [
             Column(
@@ -384,8 +394,8 @@ class _CategoryTile extends StatelessWidget {
               children: [
                 Image.asset(
                   asset,
-                  width: 40,
-                  height: 40,
+                  width: 64,
+                  height: 64,
                   color: tint,
                   filterQuality: FilterQuality.medium,
                 ),
@@ -550,11 +560,10 @@ class _StreakCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.divider),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
@@ -595,9 +604,8 @@ class _QuickLogChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: AppColors.accent.withValues(alpha: 0.15),
+          color: AppColors.accent.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: AppColors.accent.withValues(alpha: 0.4)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

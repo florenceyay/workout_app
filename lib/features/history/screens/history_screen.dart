@@ -117,8 +117,7 @@ class _HistoryModeToggle extends StatelessWidget {
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.divider),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
@@ -199,8 +198,7 @@ class _ByDayViewState extends State<_ByDayView> {
         return Container(
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.divider),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Column(
             children: [
@@ -438,9 +436,9 @@ class _ByMuscleView extends ConsumerWidget {
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            mainAxisSpacing: 10,
+            mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            childAspectRatio: 1.6,
+            childAspectRatio: 1.3,
           ),
           itemCount: _categories.length,
           itemBuilder: (context, i) {
@@ -499,74 +497,88 @@ class _MuscleBadge extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.divider),
-        ),
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-        child: Stack(
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Image.asset(
-                  asset,
-                  width: 40,
-                  height: 40,
-                  color: tint,
-                  filterQuality: FilterQuality.medium,
-                ),
-                SizedBox(
-                  width: 90,
-                  child: Text(
-                    label,
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      height: 1.1,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            // Mini progression chart (top-right)
-            Positioned(
-              top: 8,
-              right: 8,
-              child: SizedBox(
-                width: 64,
-                height: 32,
-                child: _MiniProgressChart(
-                  points: progression,
-                  color: tint,
-                ),
-              ),
-            ),
-            // Log count (bottom-right)
-            Positioned(
-              bottom: 2,
-              right: 12,
-              child: SizedBox(
-                width: 70,
-                child: Text(
-                  count == 0 ? 'No logs' : '$count log${count == 1 ? '' : 's'}',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11,
-                    height: 1.3,
-                  ),
-                  maxLines: 1,
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
+          color: AppColors.surfaceLight,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.05),
+            width: 0.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
+        child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+              child: Stack(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Image.asset(
+                        asset,
+                        width: 64,
+                        height: 64,
+                        color: tint,
+                        filterQuality: FilterQuality.medium,
+                      ),
+                      SizedBox(
+                        width: 90,
+                        child: Text(
+                          label,
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            height: 1.1,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Mini progression chart (top-right)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: SizedBox(
+                      width: 64,
+                      height: 32,
+                      child: _MiniProgressChart(
+                        points: progression,
+                        color: tint,
+                      ),
+                    ),
+                  ),
+                  // Log count (bottom-right)
+                  Positioned(
+                    bottom: 2,
+                    right: 12,
+                    child: SizedBox(
+                      width: 70,
+                      child: Text(
+                        count == 0
+                            ? 'No logs'
+                            : '$count log${count == 1 ? '' : 's'}',
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 11,
+                          height: 1.3,
+                        ),
+                        maxLines: 1,
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
       ),
     );
   }
@@ -789,10 +801,8 @@ class _QuickCheckBar extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 9),
                     decoration: BoxDecoration(
-                      color: AppColors.accent.withValues(alpha: 0.15),
+                      color: AppColors.accent.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                          color: AppColors.accent.withValues(alpha: 0.4)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -917,8 +927,7 @@ class _SubcategoryHistoryScreenState
           return Container(
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.divider),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: Column(
               children: [

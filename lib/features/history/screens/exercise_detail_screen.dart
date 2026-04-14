@@ -155,9 +155,8 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
               Container(
                 decoration: BoxDecoration(
                   color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.divider),
-                ),
+                  borderRadius: BorderRadius.circular(14),
+                                  ),
                 child: TableCalendar(
                   firstDay: DateTime(2020),
                   lastDay: DateTime.now().add(const Duration(days: 1)),
@@ -317,9 +316,8 @@ class _ProgressionChart extends StatelessWidget {
         height: 160,
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.divider),
-        ),
+          borderRadius: BorderRadius.circular(14),
+                  ),
         child: const Center(
           child: Text('Log more sessions to see your chart.',
               style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
@@ -341,9 +339,8 @@ class _ProgressionChart extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.divider),
-      ),
+        borderRadius: BorderRadius.circular(14),
+              ),
       child: LineChart(
         LineChartData(
           minY: (minVal - range * 0.1).clamp(0, double.infinity),
@@ -428,7 +425,7 @@ class _SessionDetail extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.accent.withValues(alpha: 0.4)),
       ),
       child: Column(

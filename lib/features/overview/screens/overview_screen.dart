@@ -194,8 +194,7 @@ class _PeriodSelector extends StatelessWidget {
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.divider),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
@@ -258,11 +257,7 @@ class _StatBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-            color: accent
-                ? AppColors.accent.withValues(alpha: 0.3)
-                : AppColors.divider),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
@@ -378,8 +373,7 @@ class _CategoryPieCardState extends State<_CategoryPieCard> {
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.divider),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -788,9 +782,8 @@ class _SuggestionBanner extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: AppColors.surface,
-          border: Border.all(color: AppColors.divider),
         ),
         child: IntrinsicHeight(
           child: Row(

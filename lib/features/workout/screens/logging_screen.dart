@@ -327,9 +327,6 @@ class _LoggingScreenState extends ConsumerState<LoggingScreen> {
                             borderRadius: BorderRadius.circular(10),
                             border: Border(
                               left: BorderSide(color: AppColors.accent, width: 3),
-                              top: const BorderSide(color: AppColors.divider),
-                              right: const BorderSide(color: AppColors.divider),
-                              bottom: const BorderSide(color: AppColors.divider),
                             ),
                           ),
                           child: Row(
@@ -363,11 +360,8 @@ class _LoggingScreenState extends ConsumerState<LoggingScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: AppColors.accent.withValues(alpha: 0.15),
+                                color: AppColors.accent.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                    color:
-                                        AppColors.accent.withValues(alpha: 0.4)),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -635,11 +629,10 @@ class _EditableSetRowState extends State<_EditableSetRow> {
           margin: const EdgeInsets.only(bottom: 8),
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.divider),
+            borderRadius: BorderRadius.circular(10),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
               children: [
                 SizedBox(
@@ -1016,7 +1009,6 @@ class _UnitToggle extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
