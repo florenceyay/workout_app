@@ -73,6 +73,8 @@ ThemeData buildAppTheme({Color? accentColor}) {
     ),
     appBarTheme: AppBarTheme(
       backgroundColor: AppColors.background,
+      surfaceTintColor: Colors.transparent,
+      scrolledUnderElevation: 0,
       foregroundColor: AppColors.textPrimary,
       elevation: 0,
       centerTitle: false,

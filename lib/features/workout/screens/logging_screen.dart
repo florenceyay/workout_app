@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +9,7 @@ import '../../shared/theme/app_theme.dart';
 import '../../shared/providers/providers.dart';
 import '../../shared/models/workout_log.dart';
 import '../../shared/widgets/plate_calculator_widget.dart';
+import '../../shared/widgets/category_video_background.dart';
 
 class LoggingScreen extends ConsumerStatefulWidget {
   final String exerciseId;
@@ -15,6 +17,7 @@ class LoggingScreen extends ConsumerStatefulWidget {
   final String category;
   final String note;
   final String? trackingType;
+  final bool plateable;
 
   const LoggingScreen({
     super.key,
@@ -23,6 +26,7 @@ class LoggingScreen extends ConsumerStatefulWidget {
     required this.category,
     this.note = '',
     this.trackingType,
+    this.plateable = false,
   });
 
   @override
@@ -138,41 +142,86 @@ class _LoggingScreenState extends ConsumerState<LoggingScreen> {
     setState(() => _sets.removeAt(index));
   }
 
-  bool get _isCardio {
-    if (widget.trackingType != null) {
-      return widget.trackingType == 'cardio';
+  // Effective tracking mode for this screen. Resolves, in order, from the
+  // explicit trackingType passed in, then falls back to category conventions.
+  //   'strength'   — weight × reps
+  //   'bodyweight' — reps only
+  //   'cardio'     — distance + duration
+  //   'time'       — duration only
+  //   'laps_time'  — pool lengths + duration
+  String get _tracking {
+    final t = widget.trackingType;
+    if (t != null && t.isNotEmpty) return t;
+    if (widget.category == 'cardio') return 'cardio';
+    if (widget.category == 'bodyweight' || widget.category == 'calisthenics') {
+      return 'bodyweight';
     }
-    return widget.category == 'cardio';
+    return 'strength';
   }
+
+  bool get _isStrength => _tracking == 'strength';
 
   Future<void> _save() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
-    final isBodyweight = widget.category == 'bodyweight' || widget.category == 'calisthenics';
     final List<WorkoutSet> validSets;
-    if (_isCardio) {
-      validSets = _sets
-          .where((s) => s.distance > 0 || s.durationMinutes > 0)
-          .map((s) => WorkoutSet(
-                weight: 0,
-                reps: 0,
-                distance: s.distance,
-                durationMinutes: s.durationMinutes,
-              ))
-          .toList();
-    } else {
-      validSets = _sets
-          .where((s) => (isBodyweight || s.weight > 0) && s.reps > 0)
-          .map((s) => WorkoutSet(weight: isBodyweight ? 0 : s.weight, reps: s.reps))
-          .toList();
+    String emptyMessage = 'Add at least one set with weight and reps.';
+    switch (_tracking) {
+      case 'cardio':
+        validSets = _sets
+            .where((s) => s.distance > 0 || s.durationMinutes > 0)
+            .map((s) => WorkoutSet(
+                  weight: 0,
+                  reps: 0,
+                  distance: s.distance,
+                  durationMinutes: s.durationMinutes,
+                ))
+            .toList();
+        emptyMessage = 'Add at least one entry with distance or time.';
+        break;
+      case 'time':
+        validSets = _sets
+            .where((s) => s.durationMinutes > 0)
+            .map((s) => WorkoutSet(
+                  weight: 0,
+                  reps: 0,
+                  durationMinutes: s.durationMinutes,
+                ))
+            .toList();
+        emptyMessage = 'Add at least one set with a duration.';
+        break;
+      case 'laps_time':
+        validSets = _sets
+            .where((s) => s.reps > 0 || s.durationMinutes > 0)
+            .map((s) => WorkoutSet(
+                  weight: 0,
+                  reps: s.reps,
+                  durationMinutes: s.durationMinutes,
+                ))
+            .toList();
+        emptyMessage = 'Add at least one entry with lengths or time.';
+        break;
+      case 'bodyweight':
+        validSets = _sets
+            .where((s) => s.reps > 0)
+            .map((s) => WorkoutSet(weight: 0, reps: s.reps))
+            .toList();
+        emptyMessage = 'Add at least one set with reps.';
+        break;
+      case 'strength':
+      default:
+        validSets = _sets
+            .where((s) => s.weight > 0 && s.reps > 0)
+            .map((s) => WorkoutSet(weight: s.weight, reps: s.reps))
+            .toList();
+        emptyMessage = 'Add at least one set with weight and reps.';
+        break;
     }
 
     if (validSets.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_isCardio
-            ? 'Add at least one entry with distance or time.'
-            : 'Add at least one set with weight and reps.')),
+        SnackBar(content: Text(emptyMessage)),
       );
       return;
     }
@@ -182,7 +231,8 @@ class _LoggingScreenState extends ConsumerState<LoggingScreen> {
     bool isPR = false;
     try {
       final svc = ref.read(workoutServiceProvider);
-      if (!_isCardio) {
+      // PR tracking only makes sense for weighted strength work.
+      if (_isStrength) {
         final maxWeight = validSets.map((s) => s.weight).reduce((a, b) => a > b ? a : b);
         isPR = await svc.isPersonalRecord(uid, widget.exerciseId, maxWeight).catchError((_) => false);
       }
@@ -248,8 +298,6 @@ class _LoggingScreenState extends ConsumerState<LoggingScreen> {
   Widget build(BuildContext context) {
     final globalUnit = ref.watch(unitPreferenceProvider);
     final unit = _unitOverride ?? globalUnit;
-    final isBodyweight =
-        widget.category == 'bodyweight' || widget.category == 'calisthenics';
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -301,9 +349,9 @@ class _LoggingScreenState extends ConsumerState<LoggingScreen> {
               },
             );
           }),
-          if (widget.category != 'bodyweight' &&
-              widget.category != 'calisthenics' &&
-              !_isCardio)
+          // Plate calculator only shows for barbell / plate-loaded exercises
+          // where the user actually needs to figure out what plates to put on.
+          if (widget.plateable && _isStrength)
             TextButton(
               onPressed: () => _showPlateCalculator(context),
               child: Text('Plates', style: TextStyle(color: AppColors.accent)),
@@ -312,7 +360,9 @@ class _LoggingScreenState extends ConsumerState<LoggingScreen> {
       ),
       body: !_loaded
           ? const Center(child: CircularProgressIndicator())
-          : Column(
+          : CategoryVideoBackground(
+              category: widget.category,
+              child: Column(
               children: [
                 Expanded(
                   child: ListView(
@@ -382,7 +432,8 @@ class _LoggingScreenState extends ConsumerState<LoggingScreen> {
                             ),
                           ),
                           const Spacer(),
-                          if (!_isCardio && !isBodyweight)
+                          // Unit toggle (kg/lb) only applies to strength work.
+                          if (_isStrength)
                             _UnitToggle(
                               unit: unit,
                               onChanged: _setUnitOverride,
@@ -395,12 +446,11 @@ class _LoggingScreenState extends ConsumerState<LoggingScreen> {
                         final i = entry.key;
                         final s = entry.value;
                         return _EditableSetRow(
-                          key: ValueKey('${s.id}_$unit'),
+                          key: ValueKey('${s.id}_${unit}_$_tracking'),
                           setNumber: i + 1,
                           entry: s,
                           unit: unit,
-                          bodyweight: widget.category == 'bodyweight' || widget.category == 'calisthenics',
-                          isCardio: _isCardio,
+                          tracking: _tracking,
                           distanceUnit: ref.watch(distanceUnitProvider),
                           onDelete: _sets.length > 1 ? () => _removeSet(i) : null,
                           onChanged: () => setState(() {}),
@@ -427,9 +477,7 @@ class _LoggingScreenState extends ConsumerState<LoggingScreen> {
                 if (_recentSessions.isNotEmpty)
                   _LastSessionBar(
                     sessions: _recentSessions,
-                    isBodyweight: widget.category == 'bodyweight' ||
-                        widget.category == 'calisthenics',
-                    isCardio: _isCardio,
+                    tracking: _tracking,
                     weightUnit: unit,
                     distanceUnit: ref.watch(distanceUnitProvider),
                   ),
@@ -440,6 +488,7 @@ class _LoggingScreenState extends ConsumerState<LoggingScreen> {
                   onSave: _save,
                 ),
               ],
+            ),
             ),
     );
   }
@@ -500,29 +549,37 @@ class _GhostSetRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        border: Border(left: BorderSide(color: AppColors.accent, width: 3)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 52,
-              child: Text('Set $setNumber',
-                  style: const TextStyle(color: AppColors.textGhost, fontSize: 13)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(8),
+              border: Border(left: BorderSide(color: AppColors.accent, width: 3)),
             ),
-            Expanded(
-              child: Text(
-                bodyweight
-                    ? '${set.reps} reps'
-                    : '${_displayWeight(set.weight, unit)} $unit  ×  ${set.reps} reps',
-                style: const TextStyle(color: AppColors.textGhost, fontSize: 16),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 52,
+                    child: Text('Set $setNumber',
+                        style: const TextStyle(color: AppColors.textGhost, fontSize: 13)),
+                  ),
+                  Expanded(
+                    child: Text(
+                      bodyweight
+                          ? '${set.reps} reps'
+                          : '${_displayWeight(set.weight, unit)} $unit  ×  ${set.reps} reps',
+                      style: const TextStyle(color: AppColors.textGhost, fontSize: 16),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -545,8 +602,7 @@ class _EditableSetRow extends StatefulWidget {
   final int setNumber;
   final _SetEntry entry;
   final String unit;
-  final bool bodyweight;
-  final bool isCardio;
+  final String tracking; // 'strength' | 'bodyweight' | 'cardio' | 'time' | 'laps_time'
   final String distanceUnit;
   final VoidCallback? onDelete;
   final VoidCallback onChanged;
@@ -556,8 +612,7 @@ class _EditableSetRow extends StatefulWidget {
     required this.setNumber,
     required this.entry,
     required this.unit,
-    this.bodyweight = false,
-    this.isCardio = false,
+    required this.tracking,
     this.distanceUnit = 'km',
     required this.onDelete,
     required this.onChanged,
@@ -606,6 +661,105 @@ class _EditableSetRowState extends State<_EditableSetRow> {
 
   String _fmt(double v) => v % 1 == 0 ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
 
+  // Builds the input fields appropriate to the active tracking type. Each
+  // field returns either a _NumberField wrapped in Expanded or a small
+  // separator so the parent Row can spread children evenly.
+  List<Widget> _buildFieldsForTracking() {
+    Widget separator(String glyph) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Text(glyph,
+              style: const TextStyle(
+                  color: AppColors.textSecondary, fontSize: 18)),
+        );
+
+    Widget weightField() => Expanded(
+          child: _NumberField(
+            controller: _weightCtrl,
+            hint: '',
+            suffix: widget.unit,
+            decimal: true,
+            wheelStep: widget.unit == 'lb' ? 5 : 2.5,
+            wheelMin: 0,
+            wheelMax: widget.unit == 'lb' ? 1000 : 500,
+            onChanged: (v) {
+              final entered = double.tryParse(v) ?? 0;
+              widget.entry.weight =
+                  widget.unit == 'lb' ? entered / 2.20462 : entered;
+              widget.onChanged();
+            },
+          ),
+        );
+
+    Widget repsField({String suffix = 'reps', double wheelMax = 100}) =>
+        Expanded(
+          child: _NumberField(
+            controller: _repsCtrl,
+            hint: '',
+            suffix: suffix,
+            decimal: false,
+            wheelStep: 1,
+            wheelMin: 0,
+            wheelMax: wheelMax,
+            onChanged: (v) {
+              widget.entry.reps = int.tryParse(v) ?? 0;
+              widget.onChanged();
+            },
+          ),
+        );
+
+    Widget distanceField() => Expanded(
+          child: _NumberField(
+            controller: _distanceCtrl,
+            hint: '',
+            suffix: widget.distanceUnit,
+            decimal: true,
+            wheelStep: widget.distanceUnit == 'mi' ? 0.5 : 1.0,
+            wheelMin: 0,
+            wheelMax: widget.distanceUnit == 'mi' ? 100 : 200,
+            onChanged: (v) {
+              final entered = double.tryParse(v) ?? 0;
+              widget.entry.distance =
+                  widget.distanceUnit == 'mi' ? entered / 0.621371 : entered;
+              widget.onChanged();
+            },
+          ),
+        );
+
+    Widget durationField() => Expanded(
+          child: _NumberField(
+            controller: _durationCtrl,
+            hint: '',
+            suffix: 'min',
+            decimal: true,
+            wheelStep: 1,
+            wheelMin: 0,
+            wheelMax: 600,
+            onChanged: (v) {
+              widget.entry.durationMinutes = double.tryParse(v) ?? 0;
+              widget.onChanged();
+            },
+          ),
+        );
+
+    switch (widget.tracking) {
+      case 'cardio':
+        return [distanceField(), separator('•'), durationField()];
+      case 'time':
+        return [durationField()];
+      case 'laps_time':
+        return [
+          repsField(suffix: 'lengths', wheelMax: 200),
+          separator('•'),
+          durationField(),
+        ];
+      case 'bodyweight':
+        return [repsField()];
+      case 'strength':
+      default:
+        return [weightField(), separator('×'), repsField()];
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -627,100 +781,25 @@ class _EditableSetRowState extends State<_EditableSetRow> {
         ),
         child: Container(
           margin: const EdgeInsets.only(bottom: 8),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
+          child: ClipRRect(
             borderRadius: BorderRadius.circular(10),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surface.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
               children: [
                 SizedBox(
                   width: 52,
                   child: Text('Set ${widget.setNumber}',
                       style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                 ),
-                if (widget.isCardio) ...[
-                  Expanded(
-                    child: _NumberField(
-                      controller: _distanceCtrl,
-                      hint: '0',
-                      suffix: widget.distanceUnit,
-                      decimal: true,
-                      wheelStep: widget.distanceUnit == 'mi' ? 0.5 : 1.0,
-                      wheelMin: 0,
-                      wheelMax: widget.distanceUnit == 'mi' ? 100 : 200,
-                      onChanged: (v) {
-                        final entered = double.tryParse(v) ?? 0;
-                        // Always store in km internally.
-                        widget.entry.distance = widget.distanceUnit == 'mi'
-                            ? entered / 0.621371
-                            : entered;
-                        widget.onChanged();
-                      },
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text('•', style: TextStyle(color: AppColors.textSecondary, fontSize: 18)),
-                  ),
-                  Expanded(
-                    child: _NumberField(
-                      controller: _durationCtrl,
-                      hint: '0',
-                      suffix: 'min',
-                      decimal: true,
-                      wheelStep: 1,
-                      wheelMin: 0,
-                      wheelMax: 600,
-                      onChanged: (v) {
-                        widget.entry.durationMinutes = double.tryParse(v) ?? 0;
-                        widget.onChanged();
-                      },
-                    ),
-                  ),
-                ] else ...[
-                  if (!widget.bodyweight) ...[
-                    Expanded(
-                      child: _NumberField(
-                        controller: _weightCtrl,
-                        hint: '0',
-                        suffix: widget.unit,
-                        decimal: true,
-                        wheelStep: widget.unit == 'lb' ? 5 : 2.5,
-                        wheelMin: 0,
-                        wheelMax: widget.unit == 'lb' ? 1000 : 500,
-                        onChanged: (v) {
-                          final entered = double.tryParse(v) ?? 0;
-                          // Always store in kg internally.
-                          widget.entry.weight = widget.unit == 'lb'
-                              ? entered / 2.20462
-                              : entered;
-                          widget.onChanged();
-                        },
-                      ),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8),
-                      child: Text('×', style: TextStyle(color: AppColors.textSecondary, fontSize: 18)),
-                    ),
-                  ],
-                  Expanded(
-                    child: _NumberField(
-                      controller: _repsCtrl,
-                      hint: '0',
-                      suffix: 'reps',
-                      decimal: false,
-                      wheelStep: 1,
-                      wheelMin: 0,
-                      wheelMax: 100,
-                      onChanged: (v) {
-                        widget.entry.reps = int.tryParse(v) ?? 0;
-                        widget.onChanged();
-                      },
-                    ),
-                  ),
-                ],
+                ..._buildFieldsForTracking(),
                 if (_showDelete && widget.onDelete != null) ...[
                   const SizedBox(width: 8),
                   GestureDetector(
@@ -730,6 +809,9 @@ class _EditableSetRowState extends State<_EditableSetRow> {
                 ] else
                   const SizedBox(width: 28),
               ],
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -1074,14 +1156,12 @@ class _SectionLabel extends StatelessWidget {
 
 class _LastSessionBar extends StatelessWidget {
   final List<WorkoutLog> sessions;
-  final bool isBodyweight;
-  final bool isCardio;
+  final String tracking; // 'strength' | 'bodyweight' | 'cardio' | 'time' | 'laps_time'
   final String weightUnit;
   final String distanceUnit;
   const _LastSessionBar({
     required this.sessions,
-    required this.isBodyweight,
-    this.isCardio = false,
+    required this.tracking,
     this.weightUnit = 'kg',
     this.distanceUnit = 'km',
   });
@@ -1092,41 +1172,66 @@ class _LastSessionBar extends StatelessWidget {
     return v % 1 == 0 ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
   }
 
+  String _fmtMin(double min) =>
+      min % 1 == 0 ? min.toStringAsFixed(0) : min.toStringAsFixed(1);
+
   String _summarise(WorkoutLog log) {
     final sets = log.sets;
     if (sets.isEmpty) return '—';
 
-    if (isCardio) {
-      final totalDistKm = sets.fold<double>(0, (sum, s) => sum + s.distance);
-      final totalMin =
-          sets.fold<double>(0, (sum, s) => sum + s.durationMinutes);
-      final dist = distanceUnit == 'mi' ? totalDistKm * 0.621371 : totalDistKm;
-      final distStr =
-          dist % 1 == 0 ? dist.toStringAsFixed(0) : dist.toStringAsFixed(2);
-      final minStr =
-          totalMin % 1 == 0 ? totalMin.toStringAsFixed(0) : totalMin.toStringAsFixed(1);
-      return '$distStr $distanceUnit in $minStr min';
+    switch (tracking) {
+      case 'cardio':
+        {
+          final totalDistKm =
+              sets.fold<double>(0, (sum, s) => sum + s.distance);
+          final totalMin =
+              sets.fold<double>(0, (sum, s) => sum + s.durationMinutes);
+          final dist =
+              distanceUnit == 'mi' ? totalDistKm * 0.621371 : totalDistKm;
+          final distStr = dist % 1 == 0
+              ? dist.toStringAsFixed(0)
+              : dist.toStringAsFixed(2);
+          return '$distStr $distanceUnit in ${_fmtMin(totalMin)} min';
+        }
+      case 'time':
+        {
+          final totalMin =
+              sets.fold<double>(0, (sum, s) => sum + s.durationMinutes);
+          if (sets.length == 1) return '${_fmtMin(totalMin)} min';
+          return '${sets.length} sets — ${_fmtMin(totalMin)} min total';
+        }
+      case 'laps_time':
+        {
+          final totalLengths = sets.fold<int>(0, (sum, s) => sum + s.reps);
+          final totalMin =
+              sets.fold<double>(0, (sum, s) => sum + s.durationMinutes);
+          return '$totalLengths lengths in ${_fmtMin(totalMin)} min';
+        }
+      case 'bodyweight':
+        {
+          final topReps = sets.map((s) => s.reps).reduce((a, b) => a > b ? a : b);
+          final allSameReps = sets.every((s) => s.reps == topReps);
+          if (allSameReps) {
+            return '${sets.length} sets of $topReps reps';
+          }
+          return '${sets.map((s) => s.reps).join(' / ')} reps';
+        }
+      case 'strength':
+      default:
+        {
+          final topSet = sets.reduce((a, b) => a.weight > b.weight ? a : b);
+          final allSameWeight = sets.every((s) => s.weight == topSet.weight);
+          final allSameReps = sets.every((s) => s.reps == topSet.reps);
+          final w = _fmtW(topSet.weight);
+          if (allSameWeight && allSameReps) {
+            return '${sets.length} sets of $w $weightUnit × ${topSet.reps} reps';
+          }
+          if (allSameWeight) {
+            return '$w $weightUnit — ${sets.map((s) => s.reps).join(' / ')} reps';
+          }
+          return sets.map((s) => '${_fmtW(s.weight)}×${s.reps}').join('  ');
+        }
     }
-
-    final topSet = sets.reduce((a, b) => a.weight > b.weight ? a : b);
-    final allSameWeight = sets.every((s) => s.weight == topSet.weight);
-    final allSameReps = sets.every((s) => s.reps == topSet.reps);
-
-    if (isBodyweight) {
-      if (allSameReps) {
-        return '${sets.length} sets of ${topSet.reps} reps';
-      }
-      return '${sets.map((s) => s.reps).join(' / ')} reps';
-    }
-
-    final w = _fmtW(topSet.weight);
-    if (allSameWeight && allSameReps) {
-      return '${sets.length} sets of $w $weightUnit × ${topSet.reps} reps';
-    }
-    if (allSameWeight) {
-      return '$w $weightUnit — ${sets.map((s) => s.reps).join(' / ')} reps';
-    }
-    return sets.map((s) => '${_fmtW(s.weight)}×${s.reps}').join('  ');
   }
 
   String _relativeDate(DateTime d) {

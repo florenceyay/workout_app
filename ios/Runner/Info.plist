@@ -47,6 +47,19 @@
 			</array>
 		</dict>
 	</dict>
+	<key>GIDClientID</key>
+	<string>1049301786744-nhff7c77snplll4dlhh9j8e64g1mtuub.apps.googleusercontent.com</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.1049301786744-nhff7c77snplll4dlhh9j8e64g1mtuub</string>
+			</array>
+		</dict>
+	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

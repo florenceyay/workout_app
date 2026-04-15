@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Torso outline left -->
+  <path d="M35 18 C28 22, 22 35, 22 50 C22 65, 25 80, 30 92 C33 98, 38 102, 42 105"/>
+  <!-- Torso outline right -->
+  <path d="M85 18 C92 22, 98 35, 98 50 C98 65, 95 80, 90 92 C87 98, 82 102, 78 105"/>
+  <!-- Center line -->
+  <path d="M60 25 L60 100"/>
+  <!-- Top ab line -->
+  <path d="M45 38 L75 38"/>
+  <!-- Upper ab curve -->
+  <path d="M45 52 C50 55, 55 55, 60 54 C65 55, 70 55, 75 52"/>
+  <!-- Middle ab line -->
+  <path d="M46 66 L74 66"/>
+  <!-- Lower ab curve -->
+  <path d="M48 80 C52 83, 56 83, 60 82 C64 83, 68 83, 72 80"/>
+  <!-- Bottom V line -->
+  <path d="M50 92 C54 96, 58 98, 60 100 C62 98, 66 96, 70 92"/>
+</svg>

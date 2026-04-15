@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Left shoulder/trap -->
+  <path d="M55 22 C45 22, 32 28, 25 38 C20 46, 18 58, 20 70 C22 82, 26 90, 32 98"/>
+  <!-- Right shoulder/trap -->
+  <path d="M65 22 C75 22, 88 28, 95 38 C100 46, 102 58, 100 70 C98 82, 94 90, 88 98"/>
+  <!-- Left scapula -->
+  <path d="M40 42 C38 50, 36 60, 38 68"/>
+  <!-- Right scapula -->
+  <path d="M80 42 C82 50, 84 60, 82 68"/>
+  <!-- Left lat detail -->
+  <path d="M42 55 C40 60, 38 65, 38 68"/>
+  <!-- Right lat detail -->
+  <path d="M78 55 C80 60, 82 65, 82 68"/>
+  <!-- Spine -->
+  <path d="M60 35 L60 72"/>
+</svg>

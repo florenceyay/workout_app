@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/models/exercise.dart';
+import '../../shared/widgets/category_video_background.dart';
 import 'logging_screen.dart';
 
 class ExerciseListScreen extends StatefulWidget {
@@ -71,7 +72,9 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
         title: Text(title,
             style: const TextStyle(fontWeight: FontWeight.bold)),
       ),
-      body: Column(
+      body: CategoryVideoBackground(
+        category: _selectedCategory,
+        child: Column(
         children: [
           // Category chips (only when not filtered by subcategory)
           if (_selectedSubcategory == null) SizedBox(
@@ -93,7 +96,7 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                     _searchQuery = '';
                   }),
                   selectedColor: AppColors.accent,
-                  backgroundColor: AppColors.surface,
+                  backgroundColor: AppColors.surface.withValues(alpha: 0.25),
                   labelStyle: TextStyle(
                     color: selected ? Colors.white : AppColors.textSecondary,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
@@ -128,7 +131,7 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                       )
                     : null,
                 filled: true,
-                fillColor: AppColors.surface,
+                fillColor: AppColors.surface.withValues(alpha: 0.25),
                 contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -178,6 +181,8 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                                   exerciseId: ex.id,
                                   exerciseName: ex.name,
                                   category: ex.category,
+                                  trackingType: ex.trackingType,
+                                  plateable: ex.plateable,
                                 ),
                               ),
                             ),
@@ -186,6 +191,7 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                       ),
           ),
         ],
+      ),
       ),
     );
   }

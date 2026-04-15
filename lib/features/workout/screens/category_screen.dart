@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -204,7 +205,7 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
                     crossAxisCount: 2,
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
-                    childAspectRatio: 1.3,
+                    childAspectRatio: 1.15,
                   ),
                   itemCount: _categories.length,
                   itemBuilder: (context, i) {
@@ -323,10 +324,35 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
   }
 
   void _goToLogging(String exerciseId, String exerciseName, String category) {
+    // Look up the full Exercise record so we can carry through the right
+    // tracking type and plate-calculator flag. Falls back gracefully if the
+    // id isn't found (e.g. deleted custom).
+    Exercise? ex;
+    for (final e in kExerciseList) {
+      if (e.id == exerciseId) {
+        ex = e;
+        break;
+      }
+    }
+    if (ex == null) {
+      for (final e in ref.read(customExercisesProvider)) {
+        if (e.id == exerciseId) {
+          ex = e;
+          break;
+        }
+      }
+    }
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => LoggingScreen(exerciseId: exerciseId, exerciseName: exerciseName, category: category),
+        builder: (_) => LoggingScreen(
+          exerciseId: exerciseId,
+          exerciseName: exerciseName,
+          category: category,
+          note: ex?.note ?? '',
+          trackingType: ex?.trackingType,
+          plateable: ex?.plateable ?? false,
+        ),
       ),
     ).then((_) => _loadData());
   }
@@ -367,80 +393,93 @@ class _CategoryTile extends StatelessWidget {
         ? null
         : loggedDates.reduce((a, b) => a.isAfter(b) ? a : b);
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surfaceLight,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.05),
-            width: 0.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.25),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-        child: Stack(
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Image.asset(
-                  asset,
-                  width: 64,
-                  height: 64,
-                  color: tint,
-                  filterQuality: FilterQuality.medium,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: Material(
+          color: const Color(0xFF0F1116).withValues(alpha: 0.55),
+          child: InkWell(
+            onTap: onTap,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: tint.withValues(alpha: 0.22),
+                  width: 1,
                 ),
-                SizedBox(
-                  width: 90,
-                  child: Text(
-                    label,
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      height: 1.1,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Visual row — icon + calendar as equal-weight peers
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Image.asset(
+                              asset,
+                              fit: BoxFit.contain,
+                              color: tint,
+                              filterQuality: FilterQuality.medium,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _MiniCalendar(
+                          loggedDates: loggedDates,
+                          accent: tint,
+                        ),
+                      ],
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
-            ),
-            Positioned(
-              top: 8,
-              right: 12,
-              child: _MiniCalendar(loggedDates: loggedDates),
-            ),
-            Positioned(
-              bottom: 2,
-              right: 12,
-              child: SizedBox(
-                width: 70,
-                child: Text(
-                  lastLogged == null
-                      ? 'No logs'
-                      : 'Last logged:\n${_formatLastLogged(lastLogged)}',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11,
-                    height: 1.3,
+                  const SizedBox(height: 8),
+                  // Thin caption bar — label + last-logged, read together
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            height: 1.1,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        lastLogged == null ? 'No logs' : _formatLastLogged(lastLogged),
+                        style: TextStyle(
+                          color: lastLogged == null
+                              ? AppColors.textGhost
+                              : tint.withValues(alpha: 0.85),
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
                   ),
-                  maxLines: 2,
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -461,7 +500,8 @@ class _CategoryTile extends StatelessWidget {
 
 class _MiniCalendar extends StatelessWidget {
   final Set<DateTime> loggedDates;
-  const _MiniCalendar({required this.loggedDates});
+  final Color accent;
+  const _MiniCalendar({required this.loggedDates, required this.accent});
 
   @override
   Widget build(BuildContext context) {
@@ -488,13 +528,9 @@ class _MiniCalendar extends StatelessWidget {
             final isCurrentMonth = dayOfMonth >= 1 && dayOfMonth <= totalDays;
 
             if (!isCurrentMonth) {
-              return Padding(
-                padding: const EdgeInsets.only(right: 3, bottom: 3),
-                child: SizedBox(
-                  width: 6,
-                  height: 6,
-                  child: Container(color: Colors.transparent),
-                ),
+              return const Padding(
+                padding: EdgeInsets.only(right: 3, bottom: 3),
+                child: SizedBox(width: 6, height: 6),
               );
             }
 
@@ -506,40 +542,32 @@ class _MiniCalendar extends StatelessWidget {
 
             return Padding(
               padding: const EdgeInsets.only(right: 3, bottom: 3),
-              child: Builder(
-                builder: (ctx) {
-                  // Outline color: white in dark theme, accent in light theme
-                  final outlineColor = Theme.of(ctx).brightness == Brightness.dark
-                      ? Colors.white
-                      : AppColors.accent;
-                  return Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Logged dot (fill)
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isLogged ? AppColors.accent : AppColors.divider,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Logged dot (fill)
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isLogged ? accent : AppColors.divider,
+                    ),
+                  ),
+                  // Today outline (ring) — always accent
+                  if (isToday)
+                    Container(
+                      width: 9,
+                      height: 9,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: accent,
+                          width: 1.2,
                         ),
                       ),
-                      // Today outline (ring)
-                      if (isToday)
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: outlineColor,
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                    ],
-                  );
-                },
+                    ),
+                ],
               ),
             );
           }),
@@ -559,25 +587,37 @@ class _StreakCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.local_fire_department, color: AppColors.accent, size: 28),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          decoration: BoxDecoration(
+            color: AppColors.surface.withValues(alpha: 0.45),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: AppColors.accent.withValues(alpha: 0.18),
+              width: 1,
+            ),
+          ),
+          child: Row(
             children: [
-              Text('$days ${days == 1 ? 'day' : 'days'} this week',
-                  style: Theme.of(context).textTheme.titleMedium),
-              Text('Keep it up!', style: Theme.of(context).textTheme.bodySmall),
+              Icon(Icons.local_fire_department,
+                  color: AppColors.accent, size: 28),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('$days ${days == 1 ? 'day' : 'days'} this week',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  Text('Keep it up!',
+                      style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -599,27 +639,40 @@ class _QuickLogChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.accent.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(22),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (pinned) ...[
-              Icon(Icons.push_pin, size: 12, color: AppColors.accent),
-              const SizedBox(width: 4),
-            ],
-            Text(label,
-                style: TextStyle(
-                    color: AppColors.accent,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14)),
-          ],
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Material(
+          color: AppColors.surface.withValues(alpha: 0.55),
+          child: InkWell(
+            onTap: onTap,
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: AppColors.accent.withValues(alpha: 0.25),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (pinned) ...[
+                    Icon(Icons.push_pin, size: 12, color: AppColors.accent),
+                    const SizedBox(width: 4),
+                  ],
+                  Text(label,
+                      style: TextStyle(
+                          color: AppColors.accent,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14)),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

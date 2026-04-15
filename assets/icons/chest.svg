@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Left pec outline -->
+  <path d="M58 30 C45 30, 30 35, 25 45 C20 55, 22 70, 28 80 C32 87, 38 92, 45 95"/>
+  <!-- Right pec outline -->
+  <path d="M62 30 C75 30, 90 35, 95 45 C100 55, 98 70, 92 80 C88 87, 82 92, 75 95"/>
+  <!-- Left pec detail -->
+  <path d="M42 50 C45 55, 50 58, 55 58"/>
+  <!-- Right pec detail -->
+  <path d="M78 50 C75 55, 70 58, 65 58"/>
+  <!-- Center line -->
+  <path d="M60 35 L60 95"/>
+  <!-- Horizontal ab lines -->
+  <path d="M52 62 L68 62"/>
+  <path d="M50 75 L70 75"/>
+  <path d="M52 88 L68 88"/>
+</svg>

@@ -68,6 +68,7 @@ class _CustomWorkoutCreationScreenState
             category: ex.category,
             note: ex.note,
             trackingType: ex.trackingType,
+            plateable: ex.plateable,
           ),
         ),
       );
@@ -173,6 +174,7 @@ class _CustomWorkoutCreationScreenState
                             category: ex.category,
                             note: ex.note,
                             trackingType: ex.trackingType,
+                            plateable: ex.plateable,
                           ),
                         ),
                       ),

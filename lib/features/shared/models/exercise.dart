@@ -5,7 +5,17 @@ class Exercise {
   final String subcategory;
   final String note;
   final bool isCustom;
-  final String? trackingType; // 'strength', 'cardio', or null
+  // Tracking mode, one of:
+  //   'strength'   — weight × reps (default for weighted lifts)
+  //   'bodyweight' — reps only (push-ups, pull-ups, plank progressions with reps)
+  //   'cardio'     — distance + duration (running, cycling, rowing, treadmill)
+  //   'time'       — duration only (plank, wall sit, jump rope, stair climber)
+  //   'laps_time'  — pool lengths + duration (swimming)
+  final String? trackingType;
+  // Whether the plate calculator is meaningful for this exercise. Only true for
+  // barbell / plate-loaded compounds where the user needs to figure out which
+  // plates to put on each side.
+  final bool plateable;
 
   const Exercise({
     required this.id,
@@ -15,6 +25,7 @@ class Exercise {
     this.note = '',
     this.isCustom = false,
     this.trackingType,
+    this.plateable = false,
   });
 
   factory Exercise.fromMap(Map<String, dynamic> map, String id) {
@@ -26,6 +37,7 @@ class Exercise {
       note: map['note'] as String? ?? '',
       isCustom: map['isCustom'] as bool? ?? false,
       trackingType: map['trackingType'] as String?,
+      plateable: map['plateable'] as bool? ?? false,
     );
   }
 
@@ -37,126 +49,137 @@ class Exercise {
         if (note.isNotEmpty) 'note': note,
         if (isCustom) 'isCustom': true,
         if (trackingType != null) 'trackingType': trackingType,
+        if (plateable) 'plateable': true,
       };
 }
 
-const List<Map<String, String>> kDefaultExercises = [
-  // Arms - Biceps
-  {'name': 'Bicep Curls', 'category': 'arms', 'subcategory': 'biceps'},
-  {'name': 'Hammer Curls', 'category': 'arms', 'subcategory': 'biceps'},
-  {'name': 'Preacher Curls', 'category': 'arms', 'subcategory': 'biceps'},
-  {'name': 'Cable Curls', 'category': 'arms', 'subcategory': 'biceps'},
-  {'name': 'Reverse Curls', 'category': 'arms', 'subcategory': 'biceps'},
-  // Arms - Triceps
-  {'name': 'Tricep Pushdown', 'category': 'arms', 'subcategory': 'triceps'},
-  {'name': 'Skull Crushers', 'category': 'arms', 'subcategory': 'triceps'},
-  {'name': 'Overhead Tricep Extension', 'category': 'arms', 'subcategory': 'triceps'},
-  {'name': 'Tricep Kickbacks', 'category': 'arms', 'subcategory': 'triceps'},
-  // Arms - Shoulders
-  {'name': 'Lateral Raises', 'category': 'arms', 'subcategory': 'shoulders'},
-  {'name': 'Overhead Press', 'category': 'arms', 'subcategory': 'shoulders'},
-  {'name': 'DB Shoulder Press', 'category': 'arms', 'subcategory': 'shoulders'},
-  {'name': 'Face Pulls', 'category': 'arms', 'subcategory': 'shoulders'},
+// Built-in exercise catalog. Each entry declares how the user tracks it and
+// whether a plate-math calculator is useful for it.
+const List<Map<String, dynamic>> kDefaultExercises = [
+  // ── Arms ────────────────────────────────────────────────────────────────
+  // Biceps
+  {'name': 'Bicep Curls', 'category': 'arms', 'subcategory': 'biceps', 'tracking': 'strength'},
+  {'name': 'Hammer Curls', 'category': 'arms', 'subcategory': 'biceps', 'tracking': 'strength'},
+  {'name': 'Preacher Curls', 'category': 'arms', 'subcategory': 'biceps', 'tracking': 'strength'},
+  {'name': 'Cable Curls', 'category': 'arms', 'subcategory': 'biceps', 'tracking': 'strength'},
+  {'name': 'Reverse Curls', 'category': 'arms', 'subcategory': 'biceps', 'tracking': 'strength'},
+  // Triceps
+  {'name': 'Tricep Pushdown', 'category': 'arms', 'subcategory': 'triceps', 'tracking': 'strength'},
+  {'name': 'Skull Crushers', 'category': 'arms', 'subcategory': 'triceps', 'tracking': 'strength', 'plateable': true},
+  {'name': 'Overhead Tricep Extension', 'category': 'arms', 'subcategory': 'triceps', 'tracking': 'strength'},
+  {'name': 'Tricep Kickbacks', 'category': 'arms', 'subcategory': 'triceps', 'tracking': 'strength'},
+  // Shoulders
+  {'name': 'Lateral Raises', 'category': 'arms', 'subcategory': 'shoulders', 'tracking': 'strength'},
+  {'name': 'Overhead Press', 'category': 'arms', 'subcategory': 'shoulders', 'tracking': 'strength', 'plateable': true},
+  {'name': 'DB Shoulder Press', 'category': 'arms', 'subcategory': 'shoulders', 'tracking': 'strength'},
+  {'name': 'Face Pulls', 'category': 'arms', 'subcategory': 'shoulders', 'tracking': 'strength'},
 
-  // Back - Lats
-  {'name': 'Lat Pulldown', 'category': 'back', 'subcategory': 'lats'},
-  {'name': 'Cable Pullover', 'category': 'back', 'subcategory': 'lats'},
-  {'name': 'Straight Arm Pulldown', 'category': 'back', 'subcategory': 'lats'},
-  // Back - Upper Back
-  {'name': 'Barbell Row', 'category': 'back', 'subcategory': 'upper back'},
-  {'name': 'Seated Cable Row', 'category': 'back', 'subcategory': 'upper back'},
-  {'name': 'T-Bar Row', 'category': 'back', 'subcategory': 'upper back'},
-  {'name': 'Single Arm Row', 'category': 'back', 'subcategory': 'upper back'},
-  // Back - Lower Back
-  {'name': 'Deadlift', 'category': 'back', 'subcategory': 'lower back'},
-  {'name': 'Rack Pulls', 'category': 'back', 'subcategory': 'lower back'},
+  // ── Back ────────────────────────────────────────────────────────────────
+  // Lats
+  {'name': 'Lat Pulldown', 'category': 'back', 'subcategory': 'lats', 'tracking': 'strength'},
+  {'name': 'Cable Pullover', 'category': 'back', 'subcategory': 'lats', 'tracking': 'strength'},
+  {'name': 'Straight Arm Pulldown', 'category': 'back', 'subcategory': 'lats', 'tracking': 'strength'},
+  // Upper Back
+  {'name': 'Barbell Row', 'category': 'back', 'subcategory': 'upper back', 'tracking': 'strength', 'plateable': true},
+  {'name': 'Seated Cable Row', 'category': 'back', 'subcategory': 'upper back', 'tracking': 'strength'},
+  {'name': 'T-Bar Row', 'category': 'back', 'subcategory': 'upper back', 'tracking': 'strength', 'plateable': true},
+  {'name': 'Single Arm Row', 'category': 'back', 'subcategory': 'upper back', 'tracking': 'strength'},
+  // Lower Back
+  {'name': 'Deadlift', 'category': 'back', 'subcategory': 'lower back', 'tracking': 'strength', 'plateable': true},
+  {'name': 'Rack Pulls', 'category': 'back', 'subcategory': 'lower back', 'tracking': 'strength', 'plateable': true},
 
-  // Chest - Upper
-  {'name': 'Incline Bench Press', 'category': 'chest', 'subcategory': 'upper chest'},
-  {'name': 'Incline DB Press', 'category': 'chest', 'subcategory': 'upper chest'},
-  // Chest - Mid
-  {'name': 'Bench Press', 'category': 'chest', 'subcategory': 'mid chest'},
-  {'name': 'DB Press', 'category': 'chest', 'subcategory': 'mid chest'},
-  {'name': 'Chest Flyes', 'category': 'chest', 'subcategory': 'mid chest'},
-  {'name': 'Cable Fly', 'category': 'chest', 'subcategory': 'mid chest'},
-  {'name': 'Pec Deck', 'category': 'chest', 'subcategory': 'mid chest'},
-  // Chest - Lower
-  {'name': 'Decline Bench Press', 'category': 'chest', 'subcategory': 'lower chest'},
+  // ── Chest ───────────────────────────────────────────────────────────────
+  {'name': 'Incline Bench Press', 'category': 'chest', 'subcategory': 'upper chest', 'tracking': 'strength', 'plateable': true},
+  {'name': 'Incline DB Press', 'category': 'chest', 'subcategory': 'upper chest', 'tracking': 'strength'},
+  {'name': 'Bench Press', 'category': 'chest', 'subcategory': 'mid chest', 'tracking': 'strength', 'plateable': true},
+  {'name': 'DB Press', 'category': 'chest', 'subcategory': 'mid chest', 'tracking': 'strength'},
+  {'name': 'Chest Flyes', 'category': 'chest', 'subcategory': 'mid chest', 'tracking': 'strength'},
+  {'name': 'Cable Fly', 'category': 'chest', 'subcategory': 'mid chest', 'tracking': 'strength'},
+  {'name': 'Pec Deck', 'category': 'chest', 'subcategory': 'mid chest', 'tracking': 'strength'},
+  {'name': 'Decline Bench Press', 'category': 'chest', 'subcategory': 'lower chest', 'tracking': 'strength', 'plateable': true},
 
-  // Legs - Quads
-  {'name': 'Squat', 'category': 'legs', 'subcategory': 'quads'},
-  {'name': 'Leg Press', 'category': 'legs', 'subcategory': 'quads'},
-  {'name': 'Leg Extension', 'category': 'legs', 'subcategory': 'quads'},
-  {'name': 'Hack Squat', 'category': 'legs', 'subcategory': 'quads'},
-  {'name': 'Lunges', 'category': 'legs', 'subcategory': 'quads'},
-  {'name': 'Bulgarian Split Squat', 'category': 'legs', 'subcategory': 'quads'},
-  // Legs - Hamstrings
-  {'name': 'Romanian Deadlift', 'category': 'legs', 'subcategory': 'hamstrings'},
-  {'name': 'Leg Curl', 'category': 'legs', 'subcategory': 'hamstrings'},
-  // Legs - Glutes
-  {'name': 'Hip Thrust', 'category': 'legs', 'subcategory': 'glutes'},
-  {'name': 'Sumo Squat', 'category': 'legs', 'subcategory': 'glutes'},
-  // Legs - Calves
-  {'name': 'Calf Raises', 'category': 'legs', 'subcategory': 'calves'},
+  // ── Legs ────────────────────────────────────────────────────────────────
+  // Quads
+  {'name': 'Squat', 'category': 'legs', 'subcategory': 'quads', 'tracking': 'strength', 'plateable': true},
+  {'name': 'Leg Press', 'category': 'legs', 'subcategory': 'quads', 'tracking': 'strength', 'plateable': true},
+  {'name': 'Leg Extension', 'category': 'legs', 'subcategory': 'quads', 'tracking': 'strength'},
+  {'name': 'Hack Squat', 'category': 'legs', 'subcategory': 'quads', 'tracking': 'strength', 'plateable': true},
+  {'name': 'Lunges', 'category': 'legs', 'subcategory': 'quads', 'tracking': 'strength'},
+  {'name': 'Bulgarian Split Squat', 'category': 'legs', 'subcategory': 'quads', 'tracking': 'strength'},
+  // Hamstrings
+  {'name': 'Romanian Deadlift', 'category': 'legs', 'subcategory': 'hamstrings', 'tracking': 'strength', 'plateable': true},
+  {'name': 'Leg Curl', 'category': 'legs', 'subcategory': 'hamstrings', 'tracking': 'strength'},
+  // Glutes
+  {'name': 'Hip Thrust', 'category': 'legs', 'subcategory': 'glutes', 'tracking': 'strength', 'plateable': true},
+  {'name': 'Sumo Squat', 'category': 'legs', 'subcategory': 'glutes', 'tracking': 'strength', 'plateable': true},
+  // Calves
+  {'name': 'Calf Raises', 'category': 'legs', 'subcategory': 'calves', 'tracking': 'strength'},
 
-  // Abs - Upper
-  {'name': 'Crunches', 'category': 'abs', 'subcategory': 'upper abs'},
-  {'name': 'Cable Crunch', 'category': 'abs', 'subcategory': 'upper abs'},
-  {'name': 'Bicycle Crunches', 'category': 'abs', 'subcategory': 'upper abs'},
-  // Abs - Lower
-  {'name': 'Leg Raises', 'category': 'abs', 'subcategory': 'lower abs'},
-  {'name': 'Hanging Knee Raises', 'category': 'abs', 'subcategory': 'lower abs'},
-  // Abs - Obliques
-  {'name': 'Side Plank', 'category': 'abs', 'subcategory': 'obliques'},
-  {'name': 'Russian Twists', 'category': 'abs', 'subcategory': 'obliques'},
-  {'name': 'Woodchoppers', 'category': 'abs', 'subcategory': 'obliques'},
-  {'name': 'Oblique Crunches', 'category': 'abs', 'subcategory': 'obliques'},
-  {'name': 'Hanging Side Knee Raises', 'category': 'abs', 'subcategory': 'obliques'},
-  // Abs - Core
-  {'name': 'Plank', 'category': 'abs', 'subcategory': 'core'},
-  {'name': 'Ab Wheel', 'category': 'abs', 'subcategory': 'core'},
+  // ── Abs ─────────────────────────────────────────────────────────────────
+  // Upper abs
+  {'name': 'Crunches', 'category': 'abs', 'subcategory': 'upper abs', 'tracking': 'bodyweight'},
+  {'name': 'Cable Crunch', 'category': 'abs', 'subcategory': 'upper abs', 'tracking': 'strength'},
+  {'name': 'Bicycle Crunches', 'category': 'abs', 'subcategory': 'upper abs', 'tracking': 'bodyweight'},
+  // Lower abs
+  {'name': 'Leg Raises', 'category': 'abs', 'subcategory': 'lower abs', 'tracking': 'bodyweight'},
+  {'name': 'Hanging Knee Raises', 'category': 'abs', 'subcategory': 'lower abs', 'tracking': 'bodyweight'},
+  // Obliques
+  {'name': 'Side Plank', 'category': 'abs', 'subcategory': 'obliques', 'tracking': 'time'},
+  {'name': 'Russian Twists', 'category': 'abs', 'subcategory': 'obliques', 'tracking': 'bodyweight'},
+  {'name': 'Woodchoppers', 'category': 'abs', 'subcategory': 'obliques', 'tracking': 'strength'},
+  {'name': 'Oblique Crunches', 'category': 'abs', 'subcategory': 'obliques', 'tracking': 'bodyweight'},
+  {'name': 'Hanging Side Knee Raises', 'category': 'abs', 'subcategory': 'obliques', 'tracking': 'bodyweight'},
+  // Core
+  {'name': 'Plank', 'category': 'abs', 'subcategory': 'core', 'tracking': 'time'},
+  {'name': 'Ab Wheel', 'category': 'abs', 'subcategory': 'core', 'tracking': 'bodyweight'},
 
-  // Cardio - Machines
-  {'name': 'Treadmill', 'category': 'cardio', 'subcategory': 'machines'},
-  {'name': 'Rowing', 'category': 'cardio', 'subcategory': 'machines'},
-  {'name': 'Stair Climber', 'category': 'cardio', 'subcategory': 'machines'},
-  {'name': 'Elliptical', 'category': 'cardio', 'subcategory': 'machines'},
-  // Cardio - Outdoor
-  {'name': 'Running', 'category': 'cardio', 'subcategory': 'outdoor'},
-  {'name': 'Cycling', 'category': 'cardio', 'subcategory': 'outdoor'},
-  {'name': 'Swimming', 'category': 'cardio', 'subcategory': 'outdoor'},
-  // Cardio - Other
-  {'name': 'Jump Rope', 'category': 'cardio', 'subcategory': 'other'},
+  // ── Cardio ──────────────────────────────────────────────────────────────
+  // Machines
+  {'name': 'Treadmill', 'category': 'cardio', 'subcategory': 'machines', 'tracking': 'cardio'},
+  {'name': 'Rowing', 'category': 'cardio', 'subcategory': 'machines', 'tracking': 'cardio'},
+  {'name': 'Stair Climber', 'category': 'cardio', 'subcategory': 'machines', 'tracking': 'time'},
+  {'name': 'Elliptical', 'category': 'cardio', 'subcategory': 'machines', 'tracking': 'cardio'},
+  // Outdoor
+  {'name': 'Running', 'category': 'cardio', 'subcategory': 'outdoor', 'tracking': 'cardio'},
+  {'name': 'Cycling', 'category': 'cardio', 'subcategory': 'outdoor', 'tracking': 'cardio'},
+  {'name': 'Swimming', 'category': 'cardio', 'subcategory': 'outdoor', 'tracking': 'laps_time'},
+  // Other
+  {'name': 'Jump Rope', 'category': 'cardio', 'subcategory': 'other', 'tracking': 'time'},
 
-  // Calisthenics - Push
-  {'name': 'Push-ups', 'category': 'calisthenics', 'subcategory': 'push'},
-  {'name': 'Dips', 'category': 'calisthenics', 'subcategory': 'push'},
-  {'name': 'Handstand Push-ups', 'category': 'calisthenics', 'subcategory': 'push'},
-  // Calisthenics - Pull
-  {'name': 'Pull-ups', 'category': 'calisthenics', 'subcategory': 'pull'},
-  {'name': 'Muscle-ups', 'category': 'calisthenics', 'subcategory': 'pull'},
-  // Calisthenics - Legs
-  {'name': 'Bodyweight Squats', 'category': 'calisthenics', 'subcategory': 'legs'},
-  {'name': 'Pistol Squats', 'category': 'calisthenics', 'subcategory': 'legs'},
-  // Calisthenics - Core
-  {'name': 'Sit-ups', 'category': 'calisthenics', 'subcategory': 'core'},
-  {'name': 'Burpees', 'category': 'calisthenics', 'subcategory': 'core'},
-  {'name': 'Mountain Climbers', 'category': 'calisthenics', 'subcategory': 'core'},
+  // ── Calisthenics ────────────────────────────────────────────────────────
+  // Push
+  {'name': 'Push-ups', 'category': 'calisthenics', 'subcategory': 'push', 'tracking': 'bodyweight'},
+  {'name': 'Dips', 'category': 'calisthenics', 'subcategory': 'push', 'tracking': 'bodyweight'},
+  {'name': 'Handstand Push-ups', 'category': 'calisthenics', 'subcategory': 'push', 'tracking': 'bodyweight'},
+  // Pull
+  {'name': 'Pull-ups', 'category': 'calisthenics', 'subcategory': 'pull', 'tracking': 'bodyweight'},
+  {'name': 'Muscle-ups', 'category': 'calisthenics', 'subcategory': 'pull', 'tracking': 'bodyweight'},
+  // Legs
+  {'name': 'Bodyweight Squats', 'category': 'calisthenics', 'subcategory': 'legs', 'tracking': 'bodyweight'},
+  {'name': 'Pistol Squats', 'category': 'calisthenics', 'subcategory': 'legs', 'tracking': 'bodyweight'},
+  // Core
+  {'name': 'Sit-ups', 'category': 'calisthenics', 'subcategory': 'core', 'tracking': 'bodyweight'},
+  {'name': 'Burpees', 'category': 'calisthenics', 'subcategory': 'core', 'tracking': 'bodyweight'},
+  {'name': 'Mountain Climbers', 'category': 'calisthenics', 'subcategory': 'core', 'tracking': 'time'},
 
-  // Custom (user-defined)
-  {'name': 'Custom Exercise', 'category': 'custom', 'subcategory': 'custom'},
+  // ── Custom (user-defined placeholder) ───────────────────────────────────
+  {'name': 'Custom Exercise', 'category': 'custom', 'subcategory': 'custom', 'tracking': 'strength'},
 ];
 
-// Pre-built Exercise list with stable IDs (name-derived slug)
+// Pre-built Exercise list with stable IDs (name-derived slug).
 final List<Exercise> kExerciseList = kDefaultExercises.map((e) {
-  final id = e['name']!.toLowerCase().replaceAll(' ', '_').replaceAll('-', '_');
+  final name = e['name']! as String;
+  final id = name.toLowerCase().replaceAll(' ', '_').replaceAll('-', '_');
   return Exercise(
     id: id,
-    name: e['name']!,
-    category: e['category']!,
-    subcategory: e['subcategory']!,
+    name: name,
+    category: e['category']! as String,
+    subcategory: e['subcategory']! as String,
+    trackingType: e['tracking'] as String?,
+    plateable: (e['plateable'] as bool?) ?? false,
   );
-}).toList()..sort((a, b) => a.name.compareTo(b.name));
+}).toList()
+  ..sort((a, b) => a.name.compareTo(b.name));
 
 // Subcategory labels and order per main category
 const Map<String, List<String>> kSubcategoriesByCategory = {

@@ -1,8 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/models/exercise.dart';
 import '../../shared/providers/providers.dart';
+import '../../shared/widgets/category_video_background.dart';
 import 'logging_screen.dart';
 
 class SubcategoryScreen extends ConsumerStatefulWidget {
@@ -85,6 +87,8 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
           exerciseId: ex.id,
           exerciseName: ex.name,
           category: ex.category,
+          trackingType: ex.trackingType,
+          plateable: ex.plateable,
         ),
       ),
     );
@@ -104,7 +108,9 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
         title: Text(categoryLabel,
             style: const TextStyle(fontWeight: FontWeight.bold)),
       ),
-      body: Column(
+      body: CategoryVideoBackground(
+        category: widget.category,
+        child: Column(
         children: [
           // Search field
           Padding(
@@ -129,7 +135,7 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
                       )
                     : null,
                 filled: true,
-                fillColor: AppColors.surface,
+                fillColor: AppColors.surface.withValues(alpha: 0.25),
                 contentPadding:
                     const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                 border: OutlineInputBorder(
@@ -153,7 +159,7 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               itemCount: subcategories.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              separatorBuilder: (_, __) => const SizedBox(height: 16),
               itemBuilder: (context, i) {
                 final sub = subcategories[i];
                 final label = kSubcategoryLabels[sub] ?? sub;
@@ -174,15 +180,20 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
                 }
                 final isOpen = isSearching || _expanded.contains(sub);
 
-                return Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Column(
-                    children: [
-                      InkWell(
-                        borderRadius: BorderRadius.circular(12),
+                // Build the whole subcategory block as a Column of separate
+                // glass pills so the video background bleeds through the gaps
+                // between the header and each exercise row.
+                return Column(
+                  children: [
+                    // ── Header pill ──
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                        child: Material(
+                          color: AppColors.surface.withValues(alpha: 0.25),
+                          child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
                         onTap: () {
                           if (isSearching) return;
                           setState(() {
@@ -227,11 +238,25 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
                           ),
                         ),
                       ),
-                      if (isOpen) ...[
-                        const Divider(
-                            height: 1, color: AppColors.divider),
-                        ...exercises.map((ex) {
-                          final tile = InkWell(
+                        ),
+                      ),
+                    ),
+                    // ── Expanded exercise rows (each its own glass pill) ──
+                    if (isOpen) ...[
+                      const SizedBox(height: 10),
+                      ...exercises.map((ex) {
+                        final tile = Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: BackdropFilter(
+                              filter:
+                                  ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                              child: Material(
+                                color: AppColors.surface
+                                    .withValues(alpha: 0.15),
+                                child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
                             onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -240,6 +265,8 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
                                   exerciseName: ex.name,
                                   category: ex.category,
                                   note: ex.note,
+                                  trackingType: ex.trackingType,
+                                  plateable: ex.plateable,
                                 ),
                               ),
                             ),
@@ -335,7 +362,11 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
                                   ],
                                 ),
                               ),
-                            );
+                            ),
+                              ),
+                            ),
+                          ),
+                          );
                           if (!ex.isCustom) return tile;
                           return Dismissible(
                             key: ValueKey('ex_${ex.id}'),
@@ -357,11 +388,20 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
                             child: tile,
                           );
                         }),
-                        // Add custom workout tile (hidden during search)
-                        if (!isSearching) ...[
-                          const Divider(
-                              height: 1, color: AppColors.divider),
-                          InkWell(
+                      // Add custom workout tile (hidden during search)
+                      if (!isSearching)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: BackdropFilter(
+                              filter:
+                                  ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                              child: Material(
+                                color: AppColors.surface
+                                    .withValues(alpha: 0.15),
+                                child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
                             onTap: () => _openCustomDialog(sub),
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
@@ -383,16 +423,18 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
                               ),
                             ),
                           ),
-                        ],
-                        const SizedBox(height: 4),
-                      ],
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
-                  ),
+                  ],
                 );
               },
             ),
           ),
         ],
+      ),
       ),
     );
   }
