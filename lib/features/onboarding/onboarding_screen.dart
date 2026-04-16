@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../shared/theme/app_theme.dart';
@@ -43,6 +44,23 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               const SizedBox(height: 48),
 
               if (!_showEmailForm) ...[
+                // Apple sign-in (iOS only, required by App Store)
+                if (Platform.isIOS) ...[
+                  _AppleSignInButton(
+                    onTap: () async {
+                      try {
+                        final user = await ref.read(authServiceProvider).signInWithApple();
+                        if (user == null && mounted) {
+                          _showError(context, 'Sign-in cancelled.');
+                        }
+                      } catch (e) {
+                        if (!mounted) return;
+                        _showError(context, 'Apple sign-in failed. Try another method.');
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 _GoogleSignInButton(
                   onTap: () async {
                     try {
@@ -355,4 +373,34 @@ class _GoogleLogoPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ──────────────────────────────────────────────
+// Apple sign-in button
+// ──────────────────────────────────────────────
+
+class _AppleSignInButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _AppleSignInButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: OutlinedButton.icon(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(color: AppColors.divider),
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        icon: Icon(Icons.apple, color: AppColors.textPrimary, size: 24),
+        label: Text(
+          'Continue with Apple',
+          style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w500),
+        ),
+      ),
+    );
+  }
 }

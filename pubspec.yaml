@@ -38,6 +38,8 @@ dependencies:
   firebase_auth: ^5.7.0
   cloud_firestore: ^5.6.6
   google_sign_in: ^6.2.2
+  sign_in_with_apple: ^6.1.4
+  crypto: ^3.0.6
 
   # Charts
   fl_chart: ^0.71.0
