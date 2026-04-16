@@ -90,16 +90,16 @@ class _CustomWorkoutCreationScreenState
       builder: (_) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        title: const Text('Delete custom workout?',
+        title: Text('Delete custom workout?',
             style: TextStyle(color: AppColors.textPrimary, fontSize: 17)),
         content: Text(
           '"${ex.name}" will be removed. Existing logs will stay in your history.',
-          style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel',
+            child: Text('Cancel',
                 style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
@@ -134,7 +134,7 @@ class _CustomWorkoutCreationScreenState
         children: [
           // ── Existing custom workouts ──
           if (customs.isNotEmpty) ...[
-            const Text(
+            Text(
               'Your custom workouts',
               style: TextStyle(
                 color: AppColors.textSecondary,
@@ -183,12 +183,12 @@ class _CustomWorkoutCreationScreenState
                   ),
                 )),
             const SizedBox(height: 16),
-            const Divider(color: AppColors.divider),
+            Divider(color: AppColors.divider),
             const SizedBox(height: 16),
           ],
 
           // ── Create new ──
-          const Text(
+          Text(
             'Create new workout',
             style: TextStyle(
               color: AppColors.textSecondary,
@@ -203,13 +203,13 @@ class _CustomWorkoutCreationScreenState
           TextField(
             controller: _nameCtrl,
             autofocus: customs.isEmpty,
-            style: const TextStyle(color: AppColors.textPrimary),
+            style: TextStyle(color: AppColors.textPrimary),
             decoration: InputDecoration(
               labelText: 'Workout name',
               hintText: 'e.g. Kickboxing, Rock Climbing',
-              labelStyle: const TextStyle(color: AppColors.textSecondary),
+              labelStyle: TextStyle(color: AppColors.textSecondary),
               hintStyle:
-                  const TextStyle(color: AppColors.textGhost, fontSize: 13),
+                  TextStyle(color: AppColors.textGhost, fontSize: 13),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -228,13 +228,13 @@ class _CustomWorkoutCreationScreenState
           TextField(
             controller: _noteCtrl,
             maxLines: 2,
-            style: const TextStyle(color: AppColors.textPrimary),
+            style: TextStyle(color: AppColors.textPrimary),
             decoration: InputDecoration(
               labelText: 'Note (optional)',
               hintText: 'e.g. with resistance band, at the park',
-              labelStyle: const TextStyle(color: AppColors.textSecondary),
+              labelStyle: TextStyle(color: AppColors.textSecondary),
               hintStyle:
-                  const TextStyle(color: AppColors.textGhost, fontSize: 13),
+                  TextStyle(color: AppColors.textGhost, fontSize: 13),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -250,7 +250,7 @@ class _CustomWorkoutCreationScreenState
           const SizedBox(height: 22),
 
           // Tracking type selector
-          const Text(
+          Text(
             'What do you want to track?',
             style: TextStyle(
               color: AppColors.textSecondary,
@@ -387,7 +387,7 @@ class _TrackingOption extends StatelessWidget {
                   const SizedBox(height: 1),
                   Text(
                     subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 12,
                     ),
@@ -449,7 +449,7 @@ class _ExistingCustomTile extends StatelessWidget {
                       Flexible(
                         child: Text(
                           exercise.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -479,7 +479,7 @@ class _ExistingCustomTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       exercise.note,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 12,
                         fontStyle: FontStyle.italic,

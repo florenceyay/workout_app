@@ -1,19 +1,65 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// Palette values — mutated at runtime via [AppColors.applyBrightness] so
+/// widgets that reference them directly (instead of Theme.of) still
+/// flip correctly between dark and light mode.
 class AppColors {
-  static const background = Color(0xFF0F1116);
-  static const surface = Color(0xFF181B22);
-  static const surfaceLight = Color(0xFF1F222B); // elevated cards
+  // Dark palette (default)
+  static const _darkBackground   = Color(0xFF0F1116);
+  static const _darkSurface      = Color(0xFF181B22);
+  static const _darkSurfaceLight = Color(0xFF1F222B);
+  static const _darkTextPrimary  = Color(0xFFF0F0F2);
+  static const _darkTextSecondary= Color(0xFF8A8D96);
+  static const _darkTextGhost    = Color(0xFF484B54);
+  static const _darkDivider      = Color(0xFF232630);
+
+  // Light palette
+  static const _lightBackground   = Color(0xFFF6F7F9);
+  static const _lightSurface      = Color(0xFFFFFFFF);
+  static const _lightSurfaceLight = Color(0xFFECEEF2);
+  static const _lightTextPrimary  = Color(0xFF16181D);
+  static const _lightTextSecondary= Color(0xFF636872);
+  static const _lightTextGhost    = Color(0xFFB4B8C0);
+  static const _lightDivider      = Color(0xFFE1E3E8);
+
+  // Mutable fields used throughout the app. Default to dark.
+  static Color background    = _darkBackground;
+  static Color surface       = _darkSurface;
+  static Color surfaceLight  = _darkSurfaceLight;
+  static Color textPrimary   = _darkTextPrimary;
+  static Color textSecondary = _darkTextSecondary;
+  static Color textGhost     = _darkTextGhost;
+  static Color divider       = _darkDivider;
+
   static Color accent = const Color(0xFF40C4FF);
-  static const textPrimary = Color(0xFFF0F0F2);
-  static const textSecondary = Color(0xFF8A8D96);
-  static const textGhost = Color(0xFF484B54);
+
+  // Constant accents — these don't change with brightness.
   static const prGold = Color(0xFFFFD700);
-  static const divider = Color(0xFF232630);
-  static const error = Color(0xFFCF6679);
+  static const error  = Color(0xFFCF6679);
+
+  static void applyBrightness(Brightness b) {
+    if (b == Brightness.light) {
+      background    = _lightBackground;
+      surface       = _lightSurface;
+      surfaceLight  = _lightSurfaceLight;
+      textPrimary   = _lightTextPrimary;
+      textSecondary = _lightTextSecondary;
+      textGhost     = _lightTextGhost;
+      divider       = _lightDivider;
+    } else {
+      background    = _darkBackground;
+      surface       = _darkSurface;
+      surfaceLight  = _darkSurfaceLight;
+      textPrimary   = _darkTextPrimary;
+      textSecondary = _darkTextSecondary;
+      textGhost     = _darkTextGhost;
+      divider       = _darkDivider;
+    }
+  }
 }
 
+/// Dark-mode accent palette — vibrant, bright colors that pop on dark bg.
 const List<Color> themeColors = [
   Color(0xFF40C4FF), // Cyan (default)
   Color(0xFF7B68EE), // Medium Slate Blue
@@ -27,6 +73,23 @@ const List<Color> themeColors = [
   Color(0xFFFFFFFF), // White
   Color(0xFFEC4899), // Pink
   Color(0xFF14B8A6), // Teal
+];
+
+/// Light-mode accent palette — rich, dark colours that contrast well
+/// against white surfaces and light-grey badges.
+const List<Color> lightThemeColors = [
+  Color(0xFF1B2A4A), // Deep Navy
+  Color(0xFF2D3436), // Charcoal
+  Color(0xFF1B4332), // Forest Green
+  Color(0xFF6B2737), // Burgundy
+  Color(0xFF4A1A6B), // Deep Purple
+  Color(0xFF3D5A80), // Slate Blue
+  Color(0xFF1A535C), // Dark Teal
+  Color(0xFF3E2723), // Espresso
+  Color(0xFF9B2335), // Dark Red
+  Color(0xFF3730A3), // Indigo
+  Color(0xFF9A3412), // Burnt Orange
+  Color(0xFF374151), // Steel
 ];
 
 TextTheme _buildTextTheme() {
@@ -51,18 +114,20 @@ TextTheme _buildTextTheme() {
   );
 }
 
-ThemeData buildAppTheme({Color? accentColor}) {
+ThemeData buildAppTheme({Color? accentColor, Brightness brightness = Brightness.dark}) {
   if (accentColor != null) {
     AppColors.accent = accentColor;
   }
+  AppColors.applyBrightness(brightness);
   final accent = AppColors.accent;
   final textTheme = _buildTextTheme();
+  final isDark = brightness == Brightness.dark;
 
   return ThemeData(
-    brightness: Brightness.dark,
+    brightness: brightness,
     scaffoldBackgroundColor: AppColors.background,
     fontFamily: GoogleFonts.plusJakartaSans().fontFamily,
-    colorScheme: ColorScheme.dark(
+    colorScheme: (isDark ? ColorScheme.dark : ColorScheme.light)(
       primary: accent,
       secondary: accent,
       surface: AppColors.surface,
@@ -110,8 +175,8 @@ ThemeData buildAppTheme({Color? accentColor}) {
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: accent, width: 1.5),
       ),
-      labelStyle: const TextStyle(color: AppColors.textSecondary),
-      hintStyle: const TextStyle(color: AppColors.textGhost),
+      labelStyle: TextStyle(color: AppColors.textSecondary),
+      hintStyle: TextStyle(color: AppColors.textGhost),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
@@ -126,7 +191,7 @@ ThemeData buildAppTheme({Color? accentColor}) {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(foregroundColor: accent),
     ),
-    dividerTheme: const DividerThemeData(color: AppColors.divider, thickness: 0.5),
+    dividerTheme: DividerThemeData(color: AppColors.divider, thickness: 0.5),
     textTheme: textTheme,
   );
 }

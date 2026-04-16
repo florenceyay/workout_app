@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/providers/providers.dart';
+import '../../shared/widgets/mini_progress_chart.dart';
 import '../../shared/models/workout_log.dart';
 import '../../shared/models/exercise.dart';
 import 'exercise_detail_screen.dart';
@@ -21,6 +22,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(themeBrightnessProvider); // rebuild on light/dark toggle
+    // Sync the global so child StatelessWidgets that read AppColors.accent
+    // directly get the correct value on the same build frame.
+    AppColors.accent = ref.watch(displayAccentProvider);
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return const SizedBox();
 
@@ -38,7 +43,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snap.hasError) {
-            return const Center(
+            return Center(
                 child: Text('Error loading history.',
                     style: TextStyle(color: AppColors.textSecondary)));
           }
@@ -85,12 +90,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.bar_chart, color: AppColors.textGhost, size: 48),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Text(
             'No workouts logged yet.\nLog your first session!',
             textAlign: TextAlign.center,
@@ -222,7 +227,7 @@ class _ByDayViewState extends State<_ByDayView> {
                           children: [
                             Text(
                               _formatDate(parsed),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppColors.textPrimary,
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -231,7 +236,7 @@ class _ByDayViewState extends State<_ByDayView> {
                             const SizedBox(height: 2),
                             Text(
                               '${dayLogs.length} workout${dayLogs.length == 1 ? '' : 's'}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppColors.textSecondary,
                                 fontSize: 13,
                               ),
@@ -248,7 +253,7 @@ class _ByDayViewState extends State<_ByDayView> {
                 ),
               ),
               if (isOpen) ...[
-                const Divider(height: 1, color: AppColors.divider),
+                Divider(height: 1, color: AppColors.divider),
                 ...dayLogs.map((log) => _SessionRow(
                       log: log,
                       onTap: () => Navigator.push(
@@ -333,7 +338,7 @@ class _SessionRow extends StatelessWidget {
                       Flexible(
                         child: Text(
                           log.exerciseName,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 15,
                             fontWeight: FontWeight.w500,
@@ -367,13 +372,13 @@ class _SessionRow extends StatelessWidget {
                         : topSet != null
                             ? '${_fmtW(topSet.weight)} kg × ${topSet.reps}  ·  ${log.sets.length} set${log.sets.length == 1 ? '' : 's'}'
                             : '',
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: AppColors.textSecondary, fontSize: 12),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right,
+            Icon(Icons.chevron_right,
                 color: AppColors.textSecondary, size: 18),
           ],
         ),
@@ -424,7 +429,7 @@ class _ByMuscleView extends ConsumerWidget {
       logsByCategory.putIfAbsent(cat, () => []).add(log);
     }
 
-    final tint = ref.watch(themeColorProvider);
+    final tint = ref.watch(displayAccentProvider);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -449,7 +454,7 @@ class _ByMuscleView extends ConsumerWidget {
               asset: cat['asset'] as String,
               tint: tint,
               count: categoryCounts[key] ?? 0,
-              progression: _computeProgression(logsByCategory[key] ?? const []),
+              progression: computeProgression(logsByCategory[key] ?? const []),
               onTap: () {
                 Navigator.push(
                   context,
@@ -530,7 +535,7 @@ class _MuscleBadge extends StatelessWidget {
                         width: 90,
                         child: Text(
                           label,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -549,7 +554,7 @@ class _MuscleBadge extends StatelessWidget {
                     child: SizedBox(
                       width: 64,
                       height: 32,
-                      child: _MiniProgressChart(
+                      child: MiniProgressChart(
                         points: progression,
                         color: tint,
                       ),
@@ -565,7 +570,7 @@ class _MuscleBadge extends StatelessWidget {
                         count == 0
                             ? 'No logs'
                             : '$count log${count == 1 ? '' : 's'}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 11,
                           height: 1.3,
@@ -584,134 +589,7 @@ class _MuscleBadge extends StatelessWidget {
   }
 }
 
-// ──────────────────────────────────────────────
-// Mini progression chart — 3–4 points, no axes
-// ──────────────────────────────────────────────
-
-class _MiniProgressChart extends StatelessWidget {
-  final List<double> points;
-  final Color color;
-  const _MiniProgressChart({required this.points, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    if (points.length < 2) {
-      return const SizedBox.shrink();
-    }
-    return CustomPaint(
-      painter: _MiniProgressPainter(points: points, color: color),
-    );
-  }
-}
-
-class _MiniProgressPainter extends CustomPainter {
-  final List<double> points;
-  final Color color;
-  _MiniProgressPainter({required this.points, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final minV = points.reduce((a, b) => a < b ? a : b);
-    final maxV = points.reduce((a, b) => a > b ? a : b);
-    final range = (maxV - minV).abs() < 1e-6 ? 1.0 : (maxV - minV);
-
-    // Leave a small vertical padding so dots at min/max aren't clipped.
-    const padY = 4.0;
-    final usableH = size.height - padY * 2;
-
-    Offset pointAt(int i) {
-      final x = points.length == 1
-          ? size.width / 2
-          : (i / (points.length - 1)) * size.width;
-      final norm = (points[i] - minV) / range;
-      // Invert y: higher value → higher on screen.
-      final y = padY + (1 - norm) * usableH;
-      return Offset(x, y);
-    }
-
-    // Faint baseline grid (single horizontal line in the middle) for context
-    final baselinePaint = Paint()
-      ..color = color.withValues(alpha: 0.12)
-      ..strokeWidth = 1;
-    canvas.drawLine(
-      Offset(0, size.height / 2),
-      Offset(size.width, size.height / 2),
-      baselinePaint,
-    );
-
-    // Line path
-    final linePaint = Paint()
-      ..color = color.withValues(alpha: 0.9)
-      ..strokeWidth = 1.6
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
-
-    final path = Path();
-    for (var i = 0; i < points.length; i++) {
-      final p = pointAt(i);
-      if (i == 0) {
-        path.moveTo(p.dx, p.dy);
-      } else {
-        path.lineTo(p.dx, p.dy);
-      }
-    }
-    canvas.drawPath(path, linePaint);
-
-    // Dots
-    final dotPaint = Paint()..color = color;
-    for (var i = 0; i < points.length; i++) {
-      canvas.drawCircle(pointAt(i), 1.8, dotPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _MiniProgressPainter old) =>
-      old.points != points || old.color != color;
-}
-
-// ──────────────────────────────────────────────
-// Progression score calculator
-// ──────────────────────────────────────────────
-//
-// Splits a category's logs into up to 4 chronological buckets (oldest →
-// newest) and returns the average "score" per bucket. Score per log is
-// chosen per category type:
-//   - weighted lifts → total volume (weight × reps summed across sets)
-//   - bodyweight     → total reps across sets
-//   - cardio         → distance (or duration if no distance)
-//
-// Returns an empty list if fewer than 2 logs exist (the chart hides itself).
-List<double> _computeProgression(List<WorkoutLog> logs) {
-  if (logs.length < 2) return const [];
-  final sorted = [...logs]..sort((a, b) => a.date.compareTo(b.date));
-
-  double scoreFor(WorkoutLog l) {
-    final cat = l.category;
-    if (cat == 'cardio') {
-      final dist = l.sets.fold<double>(0, (s, x) => s + x.distance);
-      if (dist > 0) return dist;
-      return l.sets.fold<double>(0, (s, x) => s + x.durationMinutes);
-    }
-    if (cat == 'bodyweight' || cat == 'calisthenics') {
-      return l.sets.fold<double>(0, (s, x) => s + x.reps).toDouble();
-    }
-    // Weighted: prefer stored totalVolume, fall back to computed.
-    if (l.totalVolume > 0) return l.totalVolume;
-    return l.sets.fold<double>(0, (s, x) => s + x.weight * x.reps);
-  }
-
-  final bucketCount = sorted.length >= 4 ? 4 : sorted.length;
-  final buckets = List.generate(bucketCount, (_) => <double>[]);
-  for (var i = 0; i < sorted.length; i++) {
-    final b = ((i * bucketCount) ~/ sorted.length).clamp(0, bucketCount - 1);
-    buckets[b].add(scoreFor(sorted[i]));
-  }
-  return [
-    for (final b in buckets)
-      if (b.isEmpty) 0.0 else b.reduce((a, c) => a + c) / b.length,
-  ];
-}
+// MiniProgressChart & computeProgression → shared/widgets/mini_progress_chart.dart
 
 // ──────────────────────────────────────────────
 // Quick Check — horizontally scrolling chips of top exercises
@@ -767,8 +645,8 @@ class _QuickCheckBar extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(0, 2, 0, 8),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(0, 2, 0, 8),
             child: Text(
               'Quick Check',
               style: TextStyle(
@@ -889,7 +767,7 @@ class _SubcategoryHistoryScreenState
         logsBySub.putIfAbsent(sub, () => []).add(log);
       }
     }
-    final tint = ref.watch(themeColorProvider);
+    final tint = ref.watch(displayAccentProvider);
 
     // Group exercise ids by subcategory
     final idsBySub = <String, List<String>>{};
@@ -950,7 +828,7 @@ class _SubcategoryHistoryScreenState
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(label,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: AppColors.textPrimary,
                                     fontSize: 17,
                                     fontWeight: FontWeight.w600,
@@ -960,7 +838,7 @@ class _SubcategoryHistoryScreenState
                                 ids.isEmpty
                                     ? 'No workouts logged'
                                     : '${ids.length} exercise${ids.length == 1 ? '' : 's'}  ·  $totalLogs log${totalLogs == 1 ? '' : 's'}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: AppColors.textSecondary,
                                   fontSize: 13,
                                 ),
@@ -972,8 +850,8 @@ class _SubcategoryHistoryScreenState
                         SizedBox(
                           width: 72,
                           height: 34,
-                          child: _MiniProgressChart(
-                            points: _computeProgression(
+                          child: MiniProgressChart(
+                            points: computeProgression(
                                 logsBySub[sub] ?? const []),
                             color: tint,
                           ),
@@ -988,7 +866,7 @@ class _SubcategoryHistoryScreenState
                   ),
                 ),
                 if (isOpen && ids.isNotEmpty) ...[
-                  const Divider(height: 1, color: AppColors.divider),
+                  Divider(height: 1, color: AppColors.divider),
                   ...ids.map((id) {
                     final name = displayName[id] ?? id;
                     final c = counts[id] ?? 0;
@@ -1010,7 +888,7 @@ class _SubcategoryHistoryScreenState
                             Expanded(
                               child: Text(
                                 name,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: AppColors.textPrimary,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w500,
@@ -1019,13 +897,13 @@ class _SubcategoryHistoryScreenState
                             ),
                             Text(
                               '$c log${c == 1 ? '' : 's'}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppColors.textSecondary,
                                 fontSize: 12,
                               ),
                             ),
                             const SizedBox(width: 6),
-                            const Icon(Icons.chevron_right,
+                            Icon(Icons.chevron_right,
                                 color: AppColors.textSecondary, size: 18),
                           ],
                         ),

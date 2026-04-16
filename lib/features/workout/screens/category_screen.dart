@@ -57,6 +57,12 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Watching brightness + accent guarantees the whole category screen
+    // (glass tiles, streak card, chips, etc.) rebuilds whenever the user
+    // flips light/dark mode or changes accent, so AppColors.* and tint
+    // reads pick up the new values immediately.
+    ref.watch(themeBrightnessProvider);
+    AppColors.accent = ref.watch(displayAccentProvider);
     final uid = FirebaseAuth.instance.currentUser?.uid;
     final logsStream = uid != null
         ? ref.watch(workoutServiceProvider).streamAllLogs(uid)
@@ -214,7 +220,7 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
                     return _CategoryTile(
                       label: cat['label'] as String,
                       asset: cat['asset'] as String,
-                      tint: ref.watch(themeColorProvider),
+                      tint: ref.watch(displayAccentProvider),
                       loggedDates: categoryDates[key] ?? {},
                       onTap: () {
                         if (key == 'custom') {
@@ -263,14 +269,14 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
               children: [
                 Expanded(
                   child: Text(log.exerciseName,
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+                      style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
                 Text(_formatDate(log.date),
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
               ],
             ),
             const SizedBox(height: 4),
-            const Text('Last session', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            Text('Last session', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
             const SizedBox(height: 16),
             ...log.sets.asMap().entries.map((entry) {
               final i = entry.key;
@@ -284,9 +290,9 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
                 child: Row(
                   children: [
                     SizedBox(width: 52, child: Text('Set ${i + 1}',
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13))),
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
                     Text('$weightStr${s.reps} reps',
-                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 16)),
+                        style: TextStyle(color: AppColors.textPrimary, fontSize: 16)),
                   ],
                 ),
               );
@@ -360,8 +366,7 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
   void _showProfileMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (_) => _SettingsSheet(ref: ref),
     );
@@ -398,7 +403,7 @@ class _CategoryTile extends StatelessWidget {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
         child: Material(
-          color: const Color(0xFF0F1116).withValues(alpha: 0.55),
+          color: AppColors.surface,
           child: InkWell(
             onTap: onTap,
             child: Container(
@@ -452,7 +457,7 @@ class _CategoryTile extends StatelessWidget {
                       Expanded(
                         child: Text(
                           label,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -463,16 +468,36 @@ class _CategoryTile extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 6),
-                      Text(
-                        lastLogged == null ? 'No logs' : _formatLastLogged(lastLogged),
-                        style: TextStyle(
-                          color: lastLogged == null
-                              ? AppColors.textGhost
-                              : tint.withValues(alpha: 0.85),
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.2,
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Last logged',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.3,
+                              height: 1.1,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            lastLogged == null
+                                ? 'No logs'
+                                : _formatLastLogged(lastLogged),
+                            style: TextStyle(
+                              color: lastLogged == null
+                                  ? AppColors.textGhost
+                                  : tint.withValues(alpha: 0.9),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.2,
+                              height: 1.1,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -542,32 +567,42 @@ class _MiniCalendar extends StatelessWidget {
 
             return Padding(
               padding: const EdgeInsets.only(right: 3, bottom: 3),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Logged dot (fill)
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isLogged ? accent : AppColors.divider,
-                    ),
-                  ),
-                  // Today outline (ring) — always accent
-                  if (isToday)
+              child: SizedBox(
+                width: 6,
+                height: 6,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.center,
+                  children: [
+                    // Logged dot (fill) — sizes the Stack to 6×6
                     Container(
-                      width: 9,
-                      height: 9,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(
-                          color: accent,
-                          width: 1.2,
-                        ),
+                        color: isLogged
+                            ? accent
+                            : AppColors.textSecondary.withValues(alpha: 0.35),
                       ),
                     ),
-                ],
+                    // Today outline (ring) — positioned so it doesn't
+                    // grow the cell and throw off row alignment.
+                    if (isToday)
+                      Positioned(
+                        left: -2,
+                        top: -2,
+                        right: -2,
+                        bottom: -2,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: accent,
+                              width: 1.2,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             );
           }),
@@ -708,156 +743,177 @@ class _SettingsSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final unitPref = ref.watch(unitPreferenceProvider);
     final distancePref = ref.watch(distanceUnitProvider);
-    final themeColor = ref.watch(themeColorProvider);
+    final brightness = ref.watch(themeBrightnessProvider);
+    final accent = ref.watch(displayAccentProvider);
+    final isLight = brightness == Brightness.light;
 
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Settings', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 20),
-
-            // Weight unit toggle
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Weight Unit', style: TextStyle(color: AppColors.textPrimary, fontSize: 16)),
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        ref.read(unitPreferenceProvider.notifier).set('kg');
-                        Navigator.pop(context);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: unitPref == 'kg' ? AppColors.accent : AppColors.divider,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text('kg', style: TextStyle(
-                          color: unitPref == 'kg' ? Colors.black : AppColors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                        )),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () {
-                        ref.read(unitPreferenceProvider.notifier).set('lb');
-                        Navigator.pop(context);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: unitPref == 'lb' ? AppColors.accent : AppColors.divider,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text('lb', style: TextStyle(
-                          color: unitPref == 'lb' ? Colors.black : AppColors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                        )),
-                      ),
-                    ),
-                  ],
-                ),
+    // Helper for small toggle pills
+    Widget pill(String label, bool active, VoidCallback onTap, {IconData? icon}) {
+      return GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: active ? accent : AppColors.divider,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 14,
+                    color: active ? Colors.white : AppColors.textSecondary),
+                const SizedBox(width: 4),
               ],
-            ),
-            const SizedBox(height: 20),
+              Text(label,
+                  style: TextStyle(
+                    color: active ? Colors.white : AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  )),
+            ],
+          ),
+        ),
+      );
+    }
 
-            // Distance unit toggle
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Distance Unit', style: TextStyle(color: AppColors.textPrimary, fontSize: 16)),
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        ref.read(distanceUnitProvider.notifier).set('km');
-                        Navigator.pop(context);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: distancePref == 'km' ? AppColors.accent : AppColors.divider,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text('km', style: TextStyle(
-                          color: distancePref == 'km' ? Colors.black : AppColors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                        )),
-                      ),
-                    ),
+    // Palette & active color for the current mode
+    final palette = isLight ? lightThemeColors : themeColors;
+    final activeColor = isLight
+        ? ref.watch(lightThemeColorProvider)
+        : ref.watch(themeColorProvider);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Settings',
+                  style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600)),
+              const SizedBox(height: 20),
+
+              // Weight unit
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Weight Unit',
+                      style: TextStyle(
+                          color: AppColors.textPrimary, fontSize: 16)),
+                  Row(children: [
+                    pill('kg', unitPref == 'kg',
+                        () => ref.read(unitPreferenceProvider.notifier).set('kg')),
                     const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () {
-                        ref.read(distanceUnitProvider.notifier).set('mi');
-                        Navigator.pop(context);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: distancePref == 'mi' ? AppColors.accent : AppColors.divider,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text('mi', style: TextStyle(
-                          color: distancePref == 'mi' ? Colors.black : AppColors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                        )),
+                    pill('lb', unitPref == 'lb',
+                        () => ref.read(unitPreferenceProvider.notifier).set('lb')),
+                  ]),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Distance unit
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Distance Unit',
+                      style: TextStyle(
+                          color: AppColors.textPrimary, fontSize: 16)),
+                  Row(children: [
+                    pill('km', distancePref == 'km',
+                        () => ref.read(distanceUnitProvider.notifier).set('km')),
+                    const SizedBox(width: 8),
+                    pill('mi', distancePref == 'mi',
+                        () => ref.read(distanceUnitProvider.notifier).set('mi')),
+                  ]),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Divider(color: AppColors.divider),
+              const SizedBox(height: 24),
+
+              // Appearance
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Appearance',
+                      style: TextStyle(
+                          color: AppColors.textPrimary, fontSize: 16)),
+                  Row(children: [
+                    pill('Dark', brightness == Brightness.dark,
+                        () => ref.read(themeBrightnessProvider.notifier).set(Brightness.dark),
+                        icon: Icons.dark_mode),
+                    const SizedBox(width: 8),
+                    pill('Light', brightness == Brightness.light,
+                        () => ref.read(themeBrightnessProvider.notifier).set(Brightness.light),
+                        icon: Icons.light_mode),
+                  ]),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Divider(color: AppColors.divider),
+              const SizedBox(height: 24),
+
+              // Theme color
+              Text('Theme Color',
+                  style: TextStyle(
+                      color: AppColors.textPrimary, fontSize: 16)),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: palette.map((color) {
+                  final isSelected = color == activeColor;
+                  return GestureDetector(
+                    onTap: () {
+                      if (isLight) {
+                        ref.read(lightThemeColorProvider.notifier).set(color);
+                      } else {
+                        ref.read(themeColorProvider.notifier).set(color);
+                      }
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: isSelected
+                            ? Border.all(
+                                color: AppColors.textPrimary, width: 3)
+                            : null,
                       ),
                     ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            const Divider(color: AppColors.divider),
-            const SizedBox(height: 24),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+              Divider(color: AppColors.divider),
+              const SizedBox(height: 24),
 
-            // Theme color picker
-            const Text('Theme Color', style: TextStyle(color: AppColors.textPrimary, fontSize: 16)),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: themeColors.map((color) {
-                final isSelected = color == themeColor;
-                return GestureDetector(
-                  onTap: () {
-                    ref.read(themeColorProvider.notifier).set(color);
-                    Navigator.pop(context);
-                  },
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                      border: isSelected ? Border.all(color: AppColors.textPrimary, width: 3) : null,
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 24),
-            const Divider(color: AppColors.divider),
-            const SizedBox(height: 24),
-
-            // Sign out
-            ListTile(
-              leading: const Icon(Icons.logout, color: AppColors.textSecondary),
-              title: const Text('Sign out'),
-              contentPadding: EdgeInsets.zero,
-              onTap: () async {
-                Navigator.pop(context);
-                await ref.read(authServiceProvider).signOut();
-              },
-            ),
-          ],
+              // Sign out
+              ListTile(
+                leading: Icon(Icons.logout, color: AppColors.textSecondary),
+                title: Text('Sign out',
+                    style: TextStyle(color: AppColors.textPrimary)),
+                contentPadding: EdgeInsets.zero,
+                onTap: () async {
+                  Navigator.pop(context);
+                  await ref.read(authServiceProvider).signOut();
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );

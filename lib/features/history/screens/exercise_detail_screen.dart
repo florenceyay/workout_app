@@ -67,7 +67,7 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
                               .contains(widget.exerciseId)
                           ? 'Pinned to Quick Check'
                           : 'Unpinned from Quick Check',
-                      style: const TextStyle(color: AppColors.textPrimary),
+                      style: TextStyle(color: AppColors.textPrimary),
                     ),
                   ),
                 );
@@ -92,7 +92,7 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
             ..sort((a, b) => a.date.compareTo(b.date));
 
           if (logs.isEmpty) {
-            return const Center(
+            return Center(
               child: Text('No sessions logged yet.', style: TextStyle(color: AppColors.textSecondary)),
             );
           }
@@ -148,7 +148,7 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
               const SizedBox(height: 24),
 
               // Calendar
-              const Text('Sessions',
+              Text('Sessions',
                   style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
               const SizedBox(height: 10),
 
@@ -180,12 +180,12 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
                   onPageChanged: (focused) => setState(() => _focusedDay = focused),
                   calendarStyle: CalendarStyle(
                     outsideDaysVisible: false,
-                    defaultTextStyle: const TextStyle(color: AppColors.textPrimary),
-                    weekendTextStyle: const TextStyle(color: AppColors.textPrimary),
+                    defaultTextStyle: TextStyle(color: AppColors.textPrimary),
+                    weekendTextStyle: TextStyle(color: AppColors.textPrimary),
                     selectedTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                    todayTextStyle: const TextStyle(color: AppColors.textPrimary),
-                    disabledTextStyle: const TextStyle(color: AppColors.textGhost),
-                    outsideTextStyle: const TextStyle(color: AppColors.textGhost),
+                    todayTextStyle: TextStyle(color: AppColors.textPrimary),
+                    disabledTextStyle: TextStyle(color: AppColors.textGhost),
+                    outsideTextStyle: TextStyle(color: AppColors.textGhost),
                     markerDecoration: BoxDecoration(
                       color: AppColors.accent,
                       shape: BoxShape.circle,
@@ -201,14 +201,14 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
                     markerSize: 6,
                     markersMaxCount: 1,
                   ),
-                  headerStyle: const HeaderStyle(
+                  headerStyle: HeaderStyle(
                     titleTextStyle: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 16),
                     leftChevronIcon: Icon(Icons.chevron_left, color: AppColors.textSecondary),
                     rightChevronIcon: Icon(Icons.chevron_right, color: AppColors.textSecondary),
                     formatButtonVisible: false,
                     titleCentered: true,
                   ),
-                  daysOfWeekStyle: const DaysOfWeekStyle(
+                  daysOfWeekStyle: DaysOfWeekStyle(
                     weekdayStyle: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                     weekendStyle: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                   ),
@@ -221,7 +221,7 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
                 _SessionDetail(log: selectedLog),
               ] else ...[
                 const SizedBox(height: 12),
-                const Center(
+                Center(
                   child: Text('Tap a highlighted day to see your session',
                       style: TextStyle(color: AppColors.textGhost, fontSize: 13)),
                 ),
@@ -318,7 +318,7 @@ class _ProgressionChart extends StatelessWidget {
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(14),
                   ),
-        child: const Center(
+        child: Center(
           child: Text('Log more sessions to see your chart.',
               style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
         ),
@@ -357,7 +357,7 @@ class _ProgressionChart extends StatelessWidget {
                 showTitles: true,
                 reservedSize: 40,
                 getTitlesWidget: (v, _) => Text(_fmt(v),
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
               ),
             ),
             bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -385,7 +385,7 @@ class _ProgressionChart extends StatelessWidget {
           lineTouchData: LineTouchData(
             touchTooltipData: LineTouchTooltipData(
               getTooltipColor: (_) => AppColors.surface,
-              tooltipBorder: const BorderSide(color: AppColors.divider),
+              tooltipBorder: BorderSide(color: AppColors.divider),
               getTooltipItems: (spots) => spots.map((s) {
                 final log = ordered[s.x.toInt()];
                 final extra = _tooltipExtra(log);
@@ -395,7 +395,7 @@ class _ProgressionChart extends StatelessWidget {
                   children: [
                     TextSpan(
                       text: '${log.date.day}/${log.date.month}${extra.isNotEmpty ? '  •  $extra' : ''}',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
                     ),
                   ],
                 );
@@ -455,22 +455,22 @@ class _SessionDetail extends StatelessWidget {
                   SizedBox(
                     width: 52,
                     child: Text('Set ${i + 1}',
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                   ),
                   Text(
                     isBodyweight
                         ? '${s.reps} reps'
                         : '${_fmtW(s.weight)} kg × ${s.reps} reps',
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
+                    style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
                   ),
                 ],
               ),
             );
           }),
           if (!isBodyweight && log.totalVolume > 0) ...[
-            const Divider(color: AppColors.divider, height: 16),
+            Divider(color: AppColors.divider, height: 16),
             Text('Total volume: ${_fmtW(log.totalVolume)} kg',
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
           ],
         ],
       ),

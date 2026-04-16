@@ -10,6 +10,10 @@ import '../../shared/models/exercise.dart';
 
 enum _Period { weekly, monthly, yearly }
 
+/// Whether the user wants a rolling window ("last N days") or a calendar-
+/// aligned window ("this week / month / year").
+enum _PeriodMode { rolling, calendar }
+
 // Ordered category keys → display label
 const _categoryLabels = <String, String>{
   'arms': 'Arms',
@@ -31,44 +35,65 @@ class OverviewScreen extends ConsumerStatefulWidget {
 
 class _OverviewScreenState extends ConsumerState<OverviewScreen> {
   _Period _period = _Period.weekly;
+  _PeriodMode _mode = _PeriodMode.rolling;
 
   DateTime get _periodStart {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     switch (_period) {
       case _Period.weekly:
+        if (_mode == _PeriodMode.calendar) {
+          // "This week" — since last Sunday.
+          final weekday = today.weekday % 7; // Sun=0
+          return today.subtract(Duration(days: weekday));
+        }
         return today.subtract(const Duration(days: 6));
       case _Period.monthly:
+        if (_mode == _PeriodMode.calendar) {
+          // "This month" — since the 1st.
+          return DateTime(today.year, today.month, 1);
+        }
         return today.subtract(const Duration(days: 29));
       case _Period.yearly:
+        if (_mode == _PeriodMode.calendar) {
+          // "This year" — since Jan 1.
+          return DateTime(today.year, 1, 1);
+        }
         return today.subtract(const Duration(days: 364));
     }
   }
 
   int get _periodLengthDays {
-    switch (_period) {
-      case _Period.weekly:
-        return 7;
-      case _Period.monthly:
-        return 30;
-      case _Period.yearly:
-        return 365;
-    }
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final start = _periodStart;
+    return today.difference(start).inDays + 1;
   }
 
   String get _periodLabel {
     switch (_period) {
       case _Period.weekly:
-        return 'last 7 days';
+        return _mode == _PeriodMode.calendar ? 'this week' : 'last 7 days';
       case _Period.monthly:
+        if (_mode == _PeriodMode.calendar) {
+          const months = [
+            '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+          ];
+          return 'since ${months[DateTime.now().month]} 1';
+        }
         return 'last 30 days';
       case _Period.yearly:
-        return 'last year';
+        return _mode == _PeriodMode.calendar
+            ? 'since Jan 1'
+            : 'last 365 days';
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(themeBrightnessProvider); // rebuild on light/dark toggle
+    AppColors.accent = ref.watch(displayAccentProvider);
     final uid = FirebaseAuth.instance.currentUser?.uid;
     final logsStream = uid != null
         ? ref.watch(workoutServiceProvider).streamAllLogs(uid)
@@ -85,8 +110,6 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen> {
           if (snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          // Merge same-exercise same-day logs so a category's count
-          // reflects distinct sessions, not raw log entries.
           final allLogs = WorkoutLog.mergeSameDayLogs(snap.data ?? []);
           final start = _periodStart;
           final filtered = allLogs
@@ -96,13 +119,9 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen> {
                       DateTime.now().add(const Duration(days: 1))))
               .toList();
 
-          // Build category breakdown using exercise list as source of truth for
-          // category (in case older logs have stale/empty category fields).
           final exerciseCategoryMap = <String, String>{
             for (final ex in kExerciseList) ex.id: ex.category,
           };
-          // Group logs by category so we can compute both counts and the
-          // "usual day" per slice.
           final logsByCategory = <String, List<WorkoutLog>>{};
           final workoutDays = <String>{};
           for (final log in filtered) {
@@ -127,7 +146,11 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen> {
               children: [
                 _PeriodSelector(
                   period: _period,
-                  onChanged: (p) => setState(() => _period = p),
+                  mode: _mode,
+                  onChanged: (p, m) => setState(() {
+                    _period = p;
+                    _mode = m;
+                  }),
                 ),
                 const SizedBox(height: 20),
 
@@ -180,13 +203,18 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen> {
 }
 
 // ──────────────────────────────────────────────
-// Weekly / Monthly / Yearly segmented toggle
+// Weekly / Monthly / Yearly segmented toggle with dropdowns
 // ──────────────────────────────────────────────
 
 class _PeriodSelector extends StatelessWidget {
   final _Period period;
-  final ValueChanged<_Period> onChanged;
-  const _PeriodSelector({required this.period, required this.onChanged});
+  final _PeriodMode mode;
+  final void Function(_Period, _PeriodMode) onChanged;
+  const _PeriodSelector({
+    required this.period,
+    required this.mode,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -198,19 +226,79 @@ class _PeriodSelector extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _tab('Weekly', _Period.weekly),
-          _tab('Monthly', _Period.monthly),
-          _tab('Yearly', _Period.yearly),
+          _tab(context, 'Weekly', _Period.weekly),
+          _tab(context, 'Monthly', _Period.monthly),
+          _tab(context, 'Yearly', _Period.yearly),
         ],
       ),
     );
   }
 
-  Widget _tab(String label, _Period p) {
+  List<PopupMenuEntry<_PeriodMode>> _menuItems(_Period p) {
+    switch (p) {
+      case _Period.weekly:
+        return [
+          _modeItem(_PeriodMode.rolling, 'Last 7 days', p),
+          _modeItem(_PeriodMode.calendar, 'This week', p),
+        ];
+      case _Period.monthly:
+        const months = [
+          '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+        ];
+        final monthLabel = 'Since ${months[DateTime.now().month]} 1';
+        return [
+          _modeItem(_PeriodMode.rolling, 'Last 30 days', p),
+          _modeItem(_PeriodMode.calendar, monthLabel, p),
+        ];
+      case _Period.yearly:
+        return [
+          _modeItem(_PeriodMode.rolling, 'Last 365 days', p),
+          _modeItem(_PeriodMode.calendar, 'Since Jan 1', p),
+        ];
+    }
+  }
+
+  PopupMenuItem<_PeriodMode> _modeItem(
+      _PeriodMode m, String label, _Period p) {
+    final isActive = p == period && m == mode;
+    return PopupMenuItem<_PeriodMode>(
+      value: m,
+      child: Row(
+        children: [
+          if (isActive)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Icon(Icons.check, size: 16, color: AppColors.accent),
+            ),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isActive ? AppColors.accent : AppColors.textPrimary,
+                fontSize: 14,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tab(BuildContext context, String label, _Period p) {
     final selected = p == period;
     return Expanded(
       child: GestureDetector(
-        onTap: () => onChanged(p),
+        onTap: () {
+          // If tapping the already-selected period, show dropdown options.
+          // If tapping a different period, just switch to it (keep mode).
+          if (selected) {
+            _showMenu(context, p);
+          } else {
+            onChanged(p, mode);
+          }
+        },
         behavior: HitTestBehavior.opaque,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
@@ -220,17 +308,56 @@ class _PeriodSelector extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
           alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: selected ? Colors.white : AppColors.textSecondary,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: selected ? Colors.white : AppColors.textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (selected) ...[
+                const SizedBox(width: 3),
+                Icon(
+                  Icons.expand_more,
+                  size: 16,
+                  color: Colors.white.withValues(alpha: 0.8),
+                ),
+              ],
+            ],
           ),
         ),
       ),
     );
+  }
+
+  void _showMenu(BuildContext context, _Period p) async {
+    // Position the popup menu below the tab.
+    final RenderBox box = context.findRenderObject() as RenderBox;
+    final Offset offset = box.localToGlobal(Offset.zero);
+    final result = await showMenu<_PeriodMode>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        offset.dx,
+        offset.dy + box.size.height,
+        offset.dx + box.size.width,
+        0,
+      ),
+      items: _menuItems(p),
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: AppColors.divider, width: 0.5),
+      ),
+      elevation: 8,
+    );
+    if (result != null) {
+      onChanged(p, result);
+    }
   }
 }
 
@@ -277,7 +404,7 @@ class _StatBadge extends StatelessWidget {
               children: [
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -287,7 +414,7 @@ class _StatBadge extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 11,
                     height: 1.2,
@@ -305,7 +432,7 @@ class _StatBadge extends StatelessWidget {
 }
 
 // ──────────────────────────────────────────────
-// Category breakdown pie chart
+// Category breakdown pie chart — 3D style
 // ──────────────────────────────────────────────
 
 class _CategoryPieCard extends StatefulWidget {
@@ -322,13 +449,13 @@ class _CategoryPieCard extends StatefulWidget {
   State<_CategoryPieCard> createState() => _CategoryPieCardState();
 }
 
-class _CategoryPieCardState extends State<_CategoryPieCard> {
+class _CategoryPieCardState extends State<_CategoryPieCard>
+    with SingleTickerProviderStateMixin {
   int _touchedIndex = -1;
 
   @override
   void didUpdateWidget(covariant _CategoryPieCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Reset touched slice when the data set changes (e.g. period switch).
     if (oldWidget.logsByCategory != widget.logsByCategory) {
       _touchedIndex = -1;
     }
@@ -354,10 +481,7 @@ class _CategoryPieCardState extends State<_CategoryPieCard> {
     return dayNames[topWeekday] ?? '—';
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // Keep only categories with at least one log, sorted by count descending
-    // so the largest slice gets the most prominent color tone.
+  List<MapEntry<String, List<WorkoutLog>>> _sortedEntries() {
     final entries = <MapEntry<String, List<WorkoutLog>>>[];
     for (final key in _categoryLabels.keys) {
       final logs = widget.logsByCategory[key];
@@ -366,11 +490,17 @@ class _CategoryPieCardState extends State<_CategoryPieCard> {
       }
     }
     entries.sort((a, b) => b.value.length.compareTo(a.value.length));
+    return entries;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = _sortedEntries();
     final total = entries.fold<int>(0, (s, e) => s + e.value.length);
     final isEmpty = total == 0;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
@@ -378,7 +508,7 @@ class _CategoryPieCardState extends State<_CategoryPieCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Muscle group breakdown',
             style: TextStyle(
               color: AppColors.textPrimary,
@@ -388,16 +518,16 @@ class _CategoryPieCardState extends State<_CategoryPieCard> {
           ),
           Text(
             widget.periodLabel,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 12,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           if (isEmpty)
             SizedBox(
-              height: 220,
+              height: 180,
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -405,7 +535,7 @@ class _CategoryPieCardState extends State<_CategoryPieCard> {
                     Icon(Icons.pie_chart_outline,
                         color: AppColors.textGhost, size: 48),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'No workouts in this period yet',
                       style: TextStyle(
                           color: AppColors.textSecondary, fontSize: 13),
@@ -415,24 +545,30 @@ class _CategoryPieCardState extends State<_CategoryPieCard> {
               ),
             )
           else
-            // Fixed-size stack so the chart doesn't relayout on touch.
             SizedBox(
-              height: 280,
+              height: 220,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
+                  // Shadow layer — drawn behind the main chart
+                  if (_touchedIndex >= 0 && _touchedIndex < entries.length)
+                    CustomPaint(
+                      size: const Size(220, 220),
+                      painter: _DonutShadowPainter(
+                        entries: entries,
+                        total: total,
+                        touchedIndex: _touchedIndex,
+                        accent: AppColors.accent,
+                      ),
+                    ),
                   PieChart(
                     PieChartData(
                       sectionsSpace: 3,
-                      centerSpaceRadius: 72,
+                      centerSpaceRadius: 56,
                       startDegreeOffset: -90,
                       pieTouchData: PieTouchData(
                         enabled: true,
                         touchCallback: (event, response) {
-                          // Continuous "hover" behaviour: update _touchedIndex
-                          // while the finger is on the chart, clear on release.
-                          // Only setState when the index actually changes so
-                          // most pointer events are no-ops (no rebuild).
                           final isEnd = event is FlTapUpEvent ||
                               event is FlLongPressEnd ||
                               event is FlPanEndEvent ||
@@ -465,10 +601,10 @@ class _CategoryPieCardState extends State<_CategoryPieCard> {
                       ],
                     ),
                   ),
-                  // Center info — constrained so it doesn't push layout.
+                  // Center info
                   SizedBox(
-                    width: 130,
-                    height: 130,
+                    width: 100,
+                    height: 100,
                     child: Center(
                       child: _CenterInfo(
                         touched: _touchedIndex >= 0 &&
@@ -487,7 +623,7 @@ class _CategoryPieCardState extends State<_CategoryPieCard> {
               ),
             ),
           if (!isEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             Center(
               child: Text(
                 'Hold and drag over a slice for details',
@@ -511,30 +647,105 @@ class _CategoryPieCardState extends State<_CategoryPieCard> {
     required int totalSlices,
     required bool isTouched,
   }) {
-    // Theme accent with varying opacity per slice — muted so it's easy on
-    // the eyes. Largest slice (index 0 after sort) is brightest; smaller
-    // slices fade. The gaps (sectionsSpace) keep slices visually separated.
     final t = totalSlices == 1 ? 0.0 : index / (totalSlices - 1);
     final opacity = 0.70 - (t * 0.45); // 0.70 → 0.25
     final color = AppColors.accent.withValues(alpha: opacity);
 
     final label = _categoryLabels[entry.key] ?? entry.key;
     final percent = (entry.value.length / total) * 100;
-    // Hide inline label on tiny slices (<8%) to avoid clipping.
     final showLabel = percent >= 8;
 
     return PieChartSectionData(
       value: entry.value.length.toDouble(),
       color: color,
       title: '',
-      // Smaller delta so the layout barely shifts when tapping a slice.
-      radius: isTouched ? 68 : 62,
-      badgeWidget:
-          showLabel ? _SliceLabel(label: label) : null,
-      // Lower offset → closer to the middle of the ring width.
+      // 3D effect: touched slice is significantly larger
+      radius: isTouched ? 72 : 50,
+      badgeWidget: showLabel ? _SliceLabel(label: label) : null,
       badgePositionPercentageOffset: 0.55,
     );
   }
+}
+
+// ──────────────────────────────────────────────
+// Custom painter to draw shadow under the touched slice
+// ──────────────────────────────────────────────
+
+class _DonutShadowPainter extends CustomPainter {
+  final List<MapEntry<String, List<WorkoutLog>>> entries;
+  final int total;
+  final int touchedIndex;
+  final Color accent;
+
+  _DonutShadowPainter({
+    required this.entries,
+    required this.total,
+    required this.touchedIndex,
+    required this.accent,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (touchedIndex < 0 || touchedIndex >= entries.length) return;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final outerRadius = 72.0 + 56.0; // touched radius + centerSpaceRadius
+    final innerRadius = 56.0;
+
+    // Compute the start angle and sweep for the touched slice.
+    const startOffset = -90.0; // fl_chart startDegreeOffset
+    const gapDeg = 3.0 * 360 / (2 * math.pi * 56); // approximate gap in degrees
+    double runningAngle = startOffset;
+    double sliceStart = 0;
+    double sliceSweep = 0;
+
+    for (var i = 0; i < entries.length; i++) {
+      final sweep = (entries[i].value.length / total) * 360.0;
+      if (i == touchedIndex) {
+        sliceStart = runningAngle;
+        sliceSweep = sweep;
+        break;
+      }
+      runningAngle += sweep;
+    }
+
+    // Draw a soft shadow arc slightly offset (simulating depth).
+    final shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.35)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+
+    final shadowOffset = Offset(2, 3); // slight down-right offset for depth
+    final shadowCenter = center + shadowOffset;
+
+    final path = Path();
+    final startRad = sliceStart * math.pi / 180;
+    final sweepRad = sliceSweep * math.pi / 180;
+
+    // Outer arc
+    path.addArc(
+      Rect.fromCircle(center: shadowCenter, radius: outerRadius),
+      startRad,
+      sweepRad,
+    );
+    // Line to inner arc end
+    final innerEndX = shadowCenter.dx + innerRadius * math.cos(startRad + sweepRad);
+    final innerEndY = shadowCenter.dy + innerRadius * math.sin(startRad + sweepRad);
+    path.lineTo(innerEndX, innerEndY);
+    // Inner arc (reverse direction)
+    path.arcTo(
+      Rect.fromCircle(center: shadowCenter, radius: innerRadius),
+      startRad + sweepRad,
+      -sweepRad,
+      false,
+    );
+    path.close();
+
+    canvas.drawPath(path, shadowPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _DonutShadowPainter old) =>
+      old.touchedIndex != touchedIndex || old.total != total || old.accent != accent;
 }
 
 // ──────────────────────────────────────────────
@@ -580,19 +791,19 @@ class _CenterInfo extends StatelessWidget {
         children: [
           Text(
             '$totalWorkouts',
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
-              fontSize: 28,
+              fontSize: 26,
               fontWeight: FontWeight.bold,
               height: 1.0,
             ),
           ),
           const SizedBox(height: 2),
-          const Text(
+          Text(
             'workouts',
             style: TextStyle(
               color: AppColors.textSecondary,
-              fontSize: 12,
+              fontSize: 11,
             ),
           ),
         ],
@@ -608,7 +819,7 @@ class _CenterInfo extends StatelessWidget {
       duration: const Duration(milliseconds: 200),
       child: Padding(
         key: ValueKey(key),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -616,34 +827,34 @@ class _CenterInfo extends StatelessWidget {
               label,
               style: TextStyle(
                 color: AppColors.accent,
-                fontSize: 15,
+                fontSize: 14,
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 2),
             Text(
               '$percent%',
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textPrimary,
-                fontSize: 26,
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
                 height: 1.0,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 3),
             Text(
               '${logs.length} ${logs.length == 1 ? "workout" : "workouts"}',
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textPrimary,
-                fontSize: 11,
+                fontSize: 10,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 1),
             Text(
-              'Usually on $mostCommonDay',
-              style: const TextStyle(
+              'Usually on\n$mostCommonDay',
+              style: TextStyle(
                 color: AppColors.textSecondary,
-                fontSize: 10,
+                fontSize: 9,
               ),
               textAlign: TextAlign.center,
             ),
@@ -776,20 +987,16 @@ class _SuggestionBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = _generateSuggestion();
-    // Use ClipRRect + IntrinsicHeight so the accent strip on the left
-    // hugs the rounded corners cleanly (non-uniform Border + borderRadius is
-    // not allowed in Flutter, so we build it with a separate coloured strip).
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.surface,
         ),
         child: IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Left accent strip
               Container(width: 3, color: AppColors.accent),
               Expanded(
                 child: Padding(
@@ -814,7 +1021,7 @@ class _SuggestionBanner extends StatelessWidget {
                           children: [
                             Text(
                               s.title,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppColors.textPrimary,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
@@ -823,7 +1030,7 @@ class _SuggestionBanner extends StatelessWidget {
                             const SizedBox(height: 4),
                             Text(
                               s.body,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppColors.textSecondary,
                                 fontSize: 13,
                                 height: 1.35,

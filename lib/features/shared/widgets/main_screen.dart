@@ -1,18 +1,20 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../workout/screens/category_screen.dart';
 import '../../overview/screens/overview_screen.dart';
 import '../../history/screens/history_screen.dart';
+import '../providers/providers.dart';
 import '../theme/app_theme.dart';
 
-class MainScreen extends StatefulWidget {
+class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  ConsumerState<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends ConsumerState<MainScreen> {
   int _index = 0;
 
   static const _screens = [
@@ -23,6 +25,10 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Rebuild when the user flips light/dark or changes accent so the
+    // bottom nav bar adopts the new palette and accent.
+    ref.watch(themeBrightnessProvider);
+    AppColors.accent = ref.watch(displayAccentProvider);
     return Scaffold(
       body: IndexedStack(index: _index, children: _screens),
       extendBody: true,
@@ -32,7 +38,7 @@ class _MainScreenState extends State<MainScreen> {
           child: Container(
             decoration: BoxDecoration(
               color: AppColors.surface.withValues(alpha: 0.88),
-              border: const Border(
+              border: Border(
                 top: BorderSide(color: AppColors.divider, width: 0.5),
               ),
             ),

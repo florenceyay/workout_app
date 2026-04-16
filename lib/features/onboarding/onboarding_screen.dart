@@ -60,12 +60,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    const Expanded(child: Divider(color: AppColors.divider)),
+                    Expanded(child: Divider(color: AppColors.divider)),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Text('or', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                     ),
-                    const Expanded(child: Divider(color: AppColors.divider)),
+                    Expanded(child: Divider(color: AppColors.divider)),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -75,11 +75,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   child: OutlinedButton(
                     onPressed: () => setState(() { _showEmailForm = true; _isRegister = true; }),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.divider),
+                      side: BorderSide(color: AppColors.divider),
                       backgroundColor: AppColors.surface,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Continue with Email',
                       style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w500),
                     ),
@@ -192,12 +192,12 @@ class _EmailFormState extends ConsumerState<_EmailForm> {
           children: [
             GestureDetector(
               onTap: widget.onBack,
-              child: const Icon(Icons.arrow_back, color: AppColors.textSecondary, size: 20),
+              child: Icon(Icons.arrow_back, color: AppColors.textSecondary, size: 20),
             ),
             const SizedBox(width: 12),
             Text(
               widget.isRegister ? 'Create account' : 'Sign in',
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -208,13 +208,13 @@ class _EmailFormState extends ConsumerState<_EmailForm> {
           controller: _emailCtrl,
           keyboardType: TextInputType.emailAddress,
           autocorrect: false,
-          style: const TextStyle(color: AppColors.textPrimary),
+          style: TextStyle(color: AppColors.textPrimary),
           decoration: InputDecoration(
             labelText: 'Email',
             filled: true,
             fillColor: AppColors.surface,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.divider)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.divider)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.divider)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.divider)),
             focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.accent)),
           ),
         ),
@@ -224,13 +224,13 @@ class _EmailFormState extends ConsumerState<_EmailForm> {
         TextField(
           controller: _passCtrl,
           obscureText: _obscure,
-          style: const TextStyle(color: AppColors.textPrimary),
+          style: TextStyle(color: AppColors.textPrimary),
           decoration: InputDecoration(
             labelText: 'Password',
             filled: true,
             fillColor: AppColors.surface,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.divider)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.divider)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.divider)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.divider)),
             focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.accent)),
             suffixIcon: IconButton(
               icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility, color: AppColors.textSecondary, size: 20),
@@ -271,7 +271,7 @@ class _EmailFormState extends ConsumerState<_EmailForm> {
             onTap: widget.onToggleMode,
             child: RichText(
               text: TextSpan(
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
                 children: [
                   TextSpan(text: widget.isRegister ? 'Already have an account? ' : "Don't have an account? "),
                   TextSpan(
@@ -304,12 +304,12 @@ class _GoogleSignInButton extends StatelessWidget {
       child: OutlinedButton.icon(
         onPressed: onTap,
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: AppColors.divider),
+          side: BorderSide(color: AppColors.divider),
           backgroundColor: AppColors.surface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
         icon: const _GoogleLogo(),
-        label: const Text(
+        label: Text(
           'Continue with Google',
           style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w500),
         ),

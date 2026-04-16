@@ -342,7 +342,7 @@ class _LoggingScreenState extends ConsumerState<LoggingScreen> {
                               .contains(widget.exerciseId)
                           ? 'Pinned to Quick Log'
                           : 'Unpinned from Quick Log',
-                      style: const TextStyle(color: AppColors.textPrimary),
+                      style: TextStyle(color: AppColors.textPrimary),
                     ),
                   ),
                 );
@@ -388,7 +388,7 @@ class _LoggingScreenState extends ConsumerState<LoggingScreen> {
                               Expanded(
                                 child: Text(
                                   widget.note,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: AppColors.textPrimary,
                                     fontSize: 13,
                                     fontStyle: FontStyle.italic,
@@ -566,14 +566,14 @@ class _GhostSetRow extends StatelessWidget {
                   SizedBox(
                     width: 52,
                     child: Text('Set $setNumber',
-                        style: const TextStyle(color: AppColors.textGhost, fontSize: 13)),
+                        style: TextStyle(color: AppColors.textGhost, fontSize: 13)),
                   ),
                   Expanded(
                     child: Text(
                       bodyweight
                           ? '${set.reps} reps'
                           : '${_displayWeight(set.weight, unit)} $unit  ×  ${set.reps} reps',
-                      style: const TextStyle(color: AppColors.textGhost, fontSize: 16),
+                      style: TextStyle(color: AppColors.textGhost, fontSize: 16),
                     ),
                   ),
                 ],
@@ -668,7 +668,7 @@ class _EditableSetRowState extends State<_EditableSetRow> {
     Widget separator(String glyph) => Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Text(glyph,
-              style: const TextStyle(
+              style: TextStyle(
                   color: AppColors.textSecondary, fontSize: 18)),
         );
 
@@ -797,7 +797,7 @@ class _EditableSetRowState extends State<_EditableSetRow> {
                 SizedBox(
                   width: 52,
                   child: Text('Set ${widget.setNumber}',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                 ),
                 ..._buildFieldsForTracking(),
                 if (_showDelete && widget.onDelete != null) ...[
@@ -886,14 +886,14 @@ class _NumberField extends StatelessWidget {
         FilteringTextInputFormatter.allow(decimal ? RegExp(r'^\d*\.?\d*') : RegExp(r'\d+')),
       ],
       textAlign: TextAlign.right,
-      style: const TextStyle(
+      style: TextStyle(
         color: AppColors.textPrimary,
         fontSize: 20,
         fontWeight: FontWeight.w500,
       ),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 16),
+        hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 16),
         isDense: true,
         border: InputBorder.none,
         contentPadding: const EdgeInsets.symmetric(vertical: 8),
@@ -912,7 +912,7 @@ class _NumberField extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             suffix!,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 13,
               fontWeight: FontWeight.w500,
@@ -1003,7 +1003,7 @@ class _WheelPickerSheetState extends State<_WheelPickerSheet> {
           children: [
             Text(
               'Select ${widget.suffix}',
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -1033,7 +1033,7 @@ class _WheelPickerSheetState extends State<_WheelPickerSheet> {
                     .map((v) => Center(
                           child: Text(
                             '${_fmt(v)} ${widget.suffix}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.textPrimary,
                               fontSize: 22,
                               fontWeight: FontWeight.w500,
@@ -1049,7 +1049,7 @@ class _WheelPickerSheetState extends State<_WheelPickerSheet> {
                 Expanded(
                   child: TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel',
+                    child: Text('Cancel',
                         style: TextStyle(color: AppColors.textSecondary)),
                   ),
                 ),
@@ -1254,7 +1254,7 @@ class _LastSessionBar extends StatelessWidget {
     const labels = ['Last session', 'Previous', 'Earlier'];
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(top: BorderSide(color: AppColors.divider)),
       ),
@@ -1277,7 +1277,7 @@ class _LastSessionBar extends StatelessWidget {
                   width: 92,
                   child: Text(
                     '${labels[i]}:',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
@@ -1287,7 +1287,7 @@ class _LastSessionBar extends StatelessWidget {
                 Expanded(
                   child: Text(
                     _summarise(sessions[i]),
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 13,
                     ),
@@ -1297,7 +1297,7 @@ class _LastSessionBar extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   _relativeDate(sessions[i].date),
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textGhost,
                     fontSize: 11,
                   ),
@@ -1350,7 +1350,7 @@ class _StickyFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + MediaQuery.of(context).padding.bottom),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.background,
         border: Border(top: BorderSide(color: AppColors.divider)),
       ),

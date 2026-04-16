@@ -1,10 +1,13 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/models/exercise.dart';
+import '../../shared/models/workout_log.dart';
 import '../../shared/providers/providers.dart';
 import '../../shared/widgets/category_video_background.dart';
+import '../../shared/widgets/mini_progress_chart.dart';
 import 'logging_screen.dart';
 
 class SubcategoryScreen extends ConsumerStatefulWidget {
@@ -32,16 +35,16 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
       builder: (_) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        title: const Text('Delete custom workout?',
+        title: Text('Delete custom workout?',
             style: TextStyle(color: AppColors.textPrimary, fontSize: 17)),
         content: Text(
           '"${ex.name}" will be removed from your list. Existing logs for it will stay in your history.',
-          style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel',
+            child: Text('Cancel',
                 style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
@@ -102,31 +105,58 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
     final query = _searchQuery.toLowerCase();
     final isSearching = query.isNotEmpty;
     final customExercises = ref.watch(customExercisesProvider);
+    final accent = ref.watch(displayAccentProvider);
+
+    // Stream logs so we can compute per-subcategory progression charts.
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final logsStream = uid != null
+        ? ref.watch(workoutServiceProvider).streamAllLogs(uid)
+        : const Stream<List<WorkoutLog>>.empty();
+
+    // Map exerciseId → subcategory for filtering logs.
+    final exerciseSubMap = <String, String>{
+      for (final ex in kExerciseList)
+        if (ex.category == widget.category) ex.id: ex.subcategory,
+      for (final ex in customExercises)
+        if (ex.category == widget.category) ex.id: ex.subcategory,
+    };
 
     return Scaffold(
       appBar: AppBar(
         title: Text(categoryLabel,
             style: const TextStyle(fontWeight: FontWeight.bold)),
       ),
-      body: CategoryVideoBackground(
-        category: widget.category,
-        child: Column(
-        children: [
-          // Search field
-          Padding(
+      body: StreamBuilder<List<WorkoutLog>>(
+        stream: logsStream,
+        builder: (context, snap) {
+          final allLogs = snap.data ?? [];
+          // Group logs by subcategory.
+          final logsBySub = <String, List<WorkoutLog>>{};
+          for (final log in allLogs) {
+            final sub = exerciseSubMap[log.exerciseId];
+            if (sub == null) continue;
+            logsBySub.putIfAbsent(sub, () => []).add(log);
+          }
+
+          return CategoryVideoBackground(
+            category: widget.category,
+            child: Column(
+            children: [
+              // Search field
+              Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: TextField(
               controller: _searchController,
               onChanged: (v) => setState(() => _searchQuery = v),
-              style: const TextStyle(color: AppColors.textPrimary),
+              style: TextStyle(color: AppColors.textPrimary),
               decoration: InputDecoration(
                 hintText: 'Search exercises…',
-                hintStyle: const TextStyle(color: AppColors.textSecondary),
-                prefixIcon: const Icon(Icons.search,
+                hintStyle: TextStyle(color: AppColors.textSecondary),
+                prefixIcon: Icon(Icons.search,
                     color: AppColors.textSecondary, size: 20),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear,
+                        icon: Icon(Icons.clear,
                             color: AppColors.textSecondary, size: 18),
                         onPressed: () => setState(() {
                           _searchController.clear();
@@ -140,11 +170,11 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
                     const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.divider),
+                  borderSide: BorderSide(color: AppColors.divider),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.divider),
+                  borderSide: BorderSide(color: AppColors.divider),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -207,35 +237,53 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 18),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    Text(label,
-                                        style: const TextStyle(
-                                            color: AppColors.textPrimary,
-                                            fontSize: 17,
-                                            fontWeight: FontWeight.w600)),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                        '${exercises.length} exercise${exercises.length == 1 ? '' : 's'}',
-                                        style: const TextStyle(
-                                            color: AppColors.textSecondary,
-                                            fontSize: 13)),
-                                  ],
+                          child: Builder(builder: (_) {
+                            final subLogs = logsBySub[sub] ?? [];
+                            final progression = computeProgression(subLogs);
+                            return Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(label,
+                                          style: TextStyle(
+                                              color: AppColors.textPrimary,
+                                              fontSize: 17,
+                                              fontWeight: FontWeight.w600)),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                          subLogs.isEmpty
+                                              ? 'No workouts logged'
+                                              : '${exercises.length} exercise${exercises.length == 1 ? '' : 's'}  ·  ${subLogs.length} log${subLogs.length == 1 ? '' : 's'}',
+                                          style: TextStyle(
+                                              color: AppColors.textSecondary,
+                                              fontSize: 13)),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              Icon(
-                                isOpen
-                                    ? Icons.expand_less
-                                    : Icons.expand_more,
-                                color: AppColors.textSecondary,
-                              ),
-                            ],
-                          ),
+                                // Mini progression chart (only when enough data)
+                                if (progression.length >= 2) ...[
+                                  SizedBox(
+                                    width: 56,
+                                    height: 28,
+                                    child: MiniProgressChart(
+                                      points: progression,
+                                      color: accent,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                ],
+                                Icon(
+                                  isOpen
+                                      ? Icons.expand_less
+                                      : Icons.expand_more,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ],
+                            );
+                          }),
                         ),
                       ),
                         ),
@@ -287,7 +335,7 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
                                             children: [
                                               Flexible(
                                                 child: Text(ex.name,
-                                                    style: const TextStyle(
+                                                    style: TextStyle(
                                                         color: AppColors
                                                             .textPrimary,
                                                         fontSize: 15,
@@ -328,7 +376,7 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
                                                   top: 2),
                                               child: Text(
                                                 ex.note,
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   color:
                                                       AppColors.textSecondary,
                                                   fontSize: 12,
@@ -435,6 +483,8 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
           ),
         ],
       ),
+      );
+        },
       ),
     );
   }
@@ -476,7 +526,7 @@ class _NewCustomDialogState extends State<_NewCustomDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       title: Text(
         'New ${widget.subcategoryLabel} workout',
-        style: const TextStyle(
+        style: TextStyle(
             color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w600),
       ),
       content: Column(
@@ -486,13 +536,13 @@ class _NewCustomDialogState extends State<_NewCustomDialog> {
           TextField(
             controller: _nameCtrl,
             autofocus: true,
-            style: const TextStyle(color: AppColors.textPrimary),
+            style: TextStyle(color: AppColors.textPrimary),
             decoration: InputDecoration(
               labelText: 'Exercise name',
-              labelStyle: const TextStyle(color: AppColors.textSecondary),
+              labelStyle: TextStyle(color: AppColors.textSecondary),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.divider),
+                borderSide: BorderSide(color: AppColors.divider),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -504,15 +554,15 @@ class _NewCustomDialogState extends State<_NewCustomDialog> {
           TextField(
             controller: _noteCtrl,
             maxLines: 2,
-            style: const TextStyle(color: AppColors.textPrimary),
+            style: TextStyle(color: AppColors.textPrimary),
             decoration: InputDecoration(
               labelText: 'Note (optional)',
               hintText: 'e.g. pull-ups with extra weight',
-              labelStyle: const TextStyle(color: AppColors.textSecondary),
-              hintStyle: const TextStyle(color: AppColors.textGhost, fontSize: 13),
+              labelStyle: TextStyle(color: AppColors.textSecondary),
+              hintStyle: TextStyle(color: AppColors.textGhost, fontSize: 13),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.divider),
+                borderSide: BorderSide(color: AppColors.divider),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -525,7 +575,7 @@ class _NewCustomDialogState extends State<_NewCustomDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel',
+          child: Text('Cancel',
               style: TextStyle(color: AppColors.textSecondary)),
         ),
         ElevatedButton(

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
+import '../providers/providers.dart';
 
 /// Plays a muted, looping 3D animation behind [child] based on the
-/// workout category. If no video is mapped for that category, the
-/// child is returned unchanged so existing screens still work.
-class CategoryVideoBackground extends StatefulWidget {
+/// workout category. The video is tinted to the user's current theme
+/// accent color via a modulate blend, so it re-themes automatically
+/// when the accent changes. If no video is mapped for that category,
+/// the child is returned unchanged so existing screens still work.
+class CategoryVideoBackground extends ConsumerStatefulWidget {
   final String category;
   final Widget child;
   final double opacity;
@@ -29,11 +33,12 @@ class CategoryVideoBackground extends StatefulWidget {
   };
 
   @override
-  State<CategoryVideoBackground> createState() =>
+  ConsumerState<CategoryVideoBackground> createState() =>
       _CategoryVideoBackgroundState();
 }
 
-class _CategoryVideoBackgroundState extends State<CategoryVideoBackground> {
+class _CategoryVideoBackgroundState
+    extends ConsumerState<CategoryVideoBackground> {
   VideoPlayerController? _controller;
 
   @override
@@ -60,18 +65,23 @@ class _CategoryVideoBackgroundState extends State<CategoryVideoBackground> {
 
   @override
   Widget build(BuildContext context) {
+    final tint = ref.watch(displayAccentProvider);
+
     return Stack(
       children: [
         if (_controller != null && _controller!.value.isInitialized)
           Positioned.fill(
             child: Opacity(
               opacity: widget.opacity,
-              child: FittedBox(
-                fit: BoxFit.cover,
-                child: SizedBox(
-                  width: _controller!.value.size.width,
-                  height: _controller!.value.size.height,
-                  child: VideoPlayer(_controller!),
+              child: ColorFiltered(
+                colorFilter: ColorFilter.mode(tint, BlendMode.hue),
+                child: FittedBox(
+                  fit: BoxFit.cover,
+                  child: SizedBox(
+                    width: _controller!.value.size.width,
+                    height: _controller!.value.size.height,
+                    child: VideoPlayer(_controller!),
+                  ),
                 ),
               ),
             ),

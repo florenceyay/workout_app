@@ -116,14 +116,14 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
             child: TextField(
               controller: _searchController,
               onChanged: (v) => setState(() => _searchQuery = v),
-              style: const TextStyle(color: AppColors.textPrimary),
+              style: TextStyle(color: AppColors.textPrimary),
               decoration: InputDecoration(
                 hintText: 'Search exercises…',
-                hintStyle: const TextStyle(color: AppColors.textSecondary),
-                prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary, size: 20),
+                hintStyle: TextStyle(color: AppColors.textSecondary),
+                prefixIcon: Icon(Icons.search, color: AppColors.textSecondary, size: 20),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear, color: AppColors.textSecondary, size: 18),
+                        icon: Icon(Icons.clear, color: AppColors.textSecondary, size: 18),
                         onPressed: () => setState(() {
                           _searchController.clear();
                           _searchQuery = '';
@@ -135,11 +135,11 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                 contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.divider),
+                  borderSide: BorderSide(color: AppColors.divider),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.divider),
+                  borderSide: BorderSide(color: AppColors.divider),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -157,23 +157,23 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                     ? Center(
                         child: Text(
                           _searchQuery.isEmpty ? 'No exercises found.' : 'No results for "$_searchQuery".',
-                          style: const TextStyle(color: AppColors.textSecondary),
+                          style: TextStyle(color: AppColors.textSecondary),
                         ),
                       )
                     : ListView.separated(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                         itemCount: filtered.length,
-                        separatorBuilder: (_, __) => const Divider(color: AppColors.divider, height: 1),
+                        separatorBuilder: (_, __) => Divider(color: AppColors.divider, height: 1),
                         itemBuilder: (context, i) {
                           final ex = filtered[i];
                           return ListTile(
                             contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                             title: Text(ex.name,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     color: AppColors.textPrimary,
                                     fontSize: 16,
                                     fontWeight: FontWeight.w500)),
-                            trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                            trailing: Icon(Icons.chevron_right, color: AppColors.textSecondary),
                             onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(

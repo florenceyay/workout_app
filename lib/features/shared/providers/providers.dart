@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/exercise.dart';
 import '../services/auth_service.dart';
 import '../services/workout_service.dart';
+import '../theme/app_theme.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());
 
@@ -23,6 +24,8 @@ final sharedPreferencesProvider = Provider<SharedPreferences>(
 const _kUnitPrefKey = 'pref_weight_unit';
 const _kDistanceUnitKey = 'pref_distance_unit';
 const _kThemeColorKey = 'pref_theme_color';
+const _kLightThemeColorKey = 'pref_light_theme_color';
+const _kThemeBrightnessKey = 'pref_theme_brightness'; // 'dark' | 'light'
 
 class _StringPrefNotifier extends StateNotifier<String> {
   final SharedPreferences prefs;
@@ -38,12 +41,13 @@ class _StringPrefNotifier extends StateNotifier<String> {
 
 class _ColorPrefNotifier extends StateNotifier<Color> {
   final SharedPreferences prefs;
-  _ColorPrefNotifier(this.prefs)
-      : super(Color(prefs.getInt(_kThemeColorKey) ?? 0xFF40C4FF));
+  final String key;
+  _ColorPrefNotifier(this.prefs, this.key, int fallback)
+      : super(Color(prefs.getInt(key) ?? fallback));
 
   void set(Color value) {
     state = value;
-    prefs.setInt(_kThemeColorKey, value.toARGB32());
+    prefs.setInt(key, value.toARGB32());
   }
 }
 
@@ -59,9 +63,58 @@ final distanceUnitProvider =
       ref.watch(sharedPreferencesProvider), _kDistanceUnitKey, 'km');
 });
 
+/// Dark-mode accent colour preference.
 final themeColorProvider =
     StateNotifierProvider<_ColorPrefNotifier, Color>((ref) {
-  return _ColorPrefNotifier(ref.watch(sharedPreferencesProvider));
+  return _ColorPrefNotifier(
+      ref.watch(sharedPreferencesProvider), _kThemeColorKey, 0xFF40C4FF);
+});
+
+/// Light-mode accent colour preference (defaults to Deep Navy).
+final lightThemeColorProvider =
+    StateNotifierProvider<_ColorPrefNotifier, Color>((ref) {
+  return _ColorPrefNotifier(
+      ref.watch(sharedPreferencesProvider), _kLightThemeColorKey, 0xFF1B2A4A);
+});
+
+// Light / dark mode. Defaults to dark.
+class _BrightnessPrefNotifier extends StateNotifier<Brightness> {
+  final SharedPreferences prefs;
+  _BrightnessPrefNotifier(this.prefs)
+      : super(prefs.getString(_kThemeBrightnessKey) == 'light'
+            ? Brightness.light
+            : Brightness.dark) {
+    // Ensure the global palette reflects the initial brightness before
+    // any widget reads AppColors.*
+    AppColors.applyBrightness(state);
+  }
+
+  void set(Brightness b) {
+    // Flip the global palette BEFORE emitting state, so that any widget
+    // rebuilt by this notification reads the new AppColors values
+    // synchronously — no 1-frame mismatch.
+    AppColors.applyBrightness(b);
+    state = b;
+    prefs.setString(
+        _kThemeBrightnessKey, b == Brightness.light ? 'light' : 'dark');
+  }
+}
+
+final themeBrightnessProvider =
+    StateNotifierProvider<_BrightnessPrefNotifier, Brightness>((ref) {
+  return _BrightnessPrefNotifier(ref.watch(sharedPreferencesProvider));
+});
+
+/// The accent color to use when actually painting widgets. Returns the
+/// dark-mode palette colour or the light-mode palette colour depending on
+/// the current brightness. Each mode stores its own preference so
+/// switching back preserves the user's earlier choice.
+final displayAccentProvider = Provider<Color>((ref) {
+  final brightness = ref.watch(themeBrightnessProvider);
+  if (brightness == Brightness.light) {
+    return ref.watch(lightThemeColorProvider);
+  }
+  return ref.watch(themeColorProvider);
 });
 
 // ──────────────────────────────────────────────

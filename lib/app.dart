@@ -10,10 +10,11 @@ class WorkoutApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeColor = ref.watch(themeColorProvider);
+    final themeColor = ref.watch(displayAccentProvider);
+    final brightness = ref.watch(themeBrightnessProvider);
     return MaterialApp(
       title: 'Workout',
-      theme: buildAppTheme(accentColor: themeColor),
+      theme: buildAppTheme(accentColor: themeColor, brightness: brightness),
       debugShowCheckedModeBanner: false,
       home: const AuthGate(),
     );

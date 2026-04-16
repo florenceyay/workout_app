@@ -67,11 +67,11 @@ class _PlateCalculatorWidgetState extends State<PlateCalculatorWidget> {
         children: [
           Row(
             children: [
-              const Text('Plate Calculator',
+              Text('Plate Calculator',
                   style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
               const Spacer(),
               IconButton(
-                icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                icon: Icon(Icons.close, color: AppColors.textSecondary),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -81,7 +81,7 @@ class _PlateCalculatorWidgetState extends State<PlateCalculatorWidget> {
           // Bar selector
           Row(
             children: [
-              const Text('Bar: ', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+              Text('Bar: ', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
               GestureDetector(
                 onTap: () => setState(() { _useKgBar = true; _calculate(); }),
                 child: _BarChip(label: '20 kg', selected: _useKgBar),
@@ -102,27 +102,27 @@ class _PlateCalculatorWidgetState extends State<PlateCalculatorWidget> {
             inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
             autofocus: true,
             onChanged: (_) => _calculate(),
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 20),
+            style: TextStyle(color: AppColors.textPrimary, fontSize: 20),
             decoration: InputDecoration(
               hintText: 'Target weight (${widget.unit})',
-              hintStyle: const TextStyle(color: AppColors.textSecondary),
+              hintStyle: TextStyle(color: AppColors.textSecondary),
               filled: true,
               fillColor: AppColors.background,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.divider),
+                borderSide: BorderSide(color: AppColors.divider),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.divider),
+                borderSide: BorderSide(color: AppColors.divider),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide(color: AppColors.accent),
               ),
               suffixText: widget.unit,
-              suffixStyle: const TextStyle(color: AppColors.textSecondary),
+              suffixStyle: TextStyle(color: AppColors.textSecondary),
             ),
           ),
           const SizedBox(height: 16),
@@ -130,11 +130,11 @@ class _PlateCalculatorWidgetState extends State<PlateCalculatorWidget> {
           // Results
           if (_controller.text.isNotEmpty) ...[
             if (_results.isEmpty)
-              const Text('Target weight is less than bar weight or invalid.',
+              Text('Target weight is less than bar weight or invalid.',
                   style: TextStyle(color: AppColors.textSecondary, fontSize: 14))
             else ...[
               Text('Plates per side ($barLabel):',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
               const SizedBox(height: 10),
               Wrap(
                 spacing: 8,
